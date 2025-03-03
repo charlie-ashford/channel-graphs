@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>404 - Page Not Found</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&family=Poppins:wght@300;400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      rel="icon"
+      href="https://api.communitrics.com/youtube/profile?channel=communitrics"
+      type="image/png"
+    />
+    <link
+      rel="apple-touch-icon"
+      href="https://api.communitrics.com/youtube/profile?channel=communitrics"
+    />
+    <style>
+      :root {
+        --bg-color: #121212;
+        --card-bg: #1e1e1e;
+        --text-primary: #e0e0e0;
+        --text-secondary: #b0b0b0;
+        --accent-1: #ff5252;
+        --accent-2: #ff867c;
+        --hover-color: #ff5252;
+        --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.7),
+          0 2px 4px -1px rgba(0, 0, 0, 0.6);
+      }
+
+      [data-theme='light'] {
+        --bg-color: #dce3e8;
+        --card-bg: #f5f7fa;
+        --text-primary: #1a202c;
+        --text-secondary: #4a5568;
+        --accent-1: #e53e3e;
+        --accent-2: #f56565;
+        --hover-color: #c53030;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+          0 2px 4px -1px rgba(0, 0, 0, 0.05);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Poppins', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        line-height: 1.6;
+        transition: background-color var(--transition);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        text-align: center;
+      }
+
+      .container {
+        max-width: 800px;
+        padding: 2rem;
+        background-color: var(--card-bg);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+      }
+
+      h1 {
+        font-size: 3rem;
+        font-weight: 700;
+        color: var(--accent-1);
+        margin-bottom: 1rem;
+      }
+
+      p {
+        font-size: 1.2rem;
+        font-weight: 400;
+        margin-bottom: 2rem;
+      }
+
+      a {
+        color: var(--accent-2);
+        text-decoration: none;
+        font-weight: 600;
+        transition: color var(--transition);
+      }
+
+      a:hover {
+        color: var(--accent-1);
+      }
+    </style>
+  </head>
+  <body data-theme="dark">
+    <div class="container">
+      <h1>404 - Page Not Found</h1>
+      <p>
+        Oops! It seems the page you're looking for doesn't exist.
+      </p>
+      <a href="/">Go back to the homepage</a>
+    </div>
+  </body>
+</html>
