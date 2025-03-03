@@ -24,27 +24,12 @@
     <style>
       :root {
         --bg-color: #121212;
-        --card-bg: #1e1e1e;
+        --card-bg: #121212;
         --text-primary: #e0e0e0;
         --text-secondary: #b0b0b0;
         --accent-1: #ff5252;
         --accent-2: #ff867c;
         --hover-color: #ff5252;
-        --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.7),
-          0 2px 4px -1px rgba(0, 0, 0, 0.6);
-      }
-
-      [data-theme='light'] {
-        --bg-color: #dce3e8;
-        --card-bg: #f5f7fa;
-        --text-primary: #1a202c;
-        --text-secondary: #4a5568;
-        --accent-1: #e53e3e;
-        --accent-2: #f56565;
-        --hover-color: #c53030;
-        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-          0 2px 4px -1px rgba(0, 0, 0, 0.05);
       }
 
       * {
@@ -68,15 +53,23 @@
       }
 
       .container {
-        max-width: 800px;
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem 1.5rem;
+        transform: scale(0.85);
+        transform-origin: top center;
+      }
+
+      .card {
+        background: var(--card-bg);
+        border-radius: 16px;
         padding: 2rem;
-        background-color: var(--card-bg);
-        border-radius: 12px;
         box-shadow: var(--shadow);
+        text-align: center;
       }
 
       h1 {
-        font-size: 3rem;
+        font-size: 2.5rem;
         font-weight: 700;
         color: var(--accent-1);
         margin-bottom: 1rem;
@@ -84,7 +77,7 @@
 
       p {
         font-size: 1.2rem;
-        font-weight: 400;
+        color: var(--text-secondary);
         margin-bottom: 2rem;
       }
 
@@ -98,15 +91,28 @@
       a:hover {
         color: var(--accent-1);
       }
+
+      #communitrics-logo {
+        width: 100px;
+        margin-bottom: 1rem;
+      }
     </style>
   </head>
   <body data-theme="dark">
     <div class="container">
-      <h1>404 - Page Not Found</h1>
-      <p>
-        Oops! It seems the page you're looking for doesn't exist.
-      </p>
-      <a href="/">Go back to the homepage</a>
+      <div class="card">
+        <img
+          id="communitrics-logo"
+          src="https://api.communitrics.com/youtube/profile?channel=communitrics"
+          alt="Communitrics Logo"
+        />
+        <h1>Oops! Channel Not Found</h1>
+        <p>
+          We couldn't find the YouTube channel you were looking for.
+          <br />Please double-check the channel ID or username.
+        </p>
+        <a href="/">Return to Communitrics Graphs</a>
+      </div>
     </div>
   </body>
 </html>
