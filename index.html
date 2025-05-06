@@ -380,65 +380,58 @@
             fetchChannelData();
           }
         });
-      document.addEventListener('DOMContentLoaded', () => {
+      document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const channelIdFromUrl = urlParams.get('id');
 
         if (channelIdFromUrl) {
           document.getElementById('channelIdInput').value = channelIdFromUrl;
-          fetchChannelData(channelIdFromUrl, isId = true);
+          await fetchChannelData(channelIdFromUrl);
         } else {
-          fetch('ids.txt')
-            .then(response => response.text())
-            .then(text => {
-              const ids = text
-                .trim()
-                .split('\n')
-                .filter(line => line.trim() !== '');
-              const randomId = ids[Math.floor(Math.random() * ids.length)];
-              document.getElementById('channelIdInput').value = randomId;
-              fetchChannelData(randomId, true);
-            })
-            .catch(error => {
-              console.error('Failed to load ids.txt:', error);
-              const fallbackId = 'UCX6OQ3DkcsbYNE6H8uQQuVA';
-              document.getElementById('channelIdInput').value = fallbackId;
-              fetchChannelData(fallbackId, true);
-            });
+          try {
+            const response = await fetch('ids.txt');
+            const text = await response.text();
+            const ids = text
+              .trim()
+              .split('\n')
+              .filter(line => line.trim() !== '');
+            const randomId = ids[Math.floor(Math.random() * ids.length)];
+            document.getElementById('channelIdInput').value = randomId;
+            await fetchChannelData(randomId); 
+          } catch (error) {
+            console.error('Failed to load ids.txt:', error);
+            const fallbackId = 'UCX6OQ3DkcsbYNE6H8uQQuVA';
+            document.getElementById('channelIdInput').value = fallbackId;
+            await fetchChannelData(fallbackId);
+          }
         }
       });
-      async function fetchChannelData(channelHandle = '', isId = false) {
-        let apiUrl;
+
+      async function fetchChannelData(channelHandle = '') {
         const channelInput =
           channelHandle || document.getElementById('channelIdInput').value.trim();
         const isLikelyId =
           channelInput.startsWith('UC') && channelInput.length === 24;
-
-        if (isLikelyId || isId) {
-          apiUrl = `https://api.communitrics.com/${channelInput}`;
-        } else {
-          apiUrl = `https://api.communitrics.com/youtube/api/?channel=${channelInput}`;
-        }
+        const apiUrl = `https://api.communitrics.com/${channelInput}`;
 
         try {
           const response = await fetch(apiUrl);
           const data = await response.json();
 
           if (response.ok) {
-            currentChannelId = data.channelId || channelInput;
-            currentChannelName = data.channelDetails.title;
+            currentChannelId = data.channelDetails.id || channelInput;
+            currentChannelName = data.channelDetails.name;
             window.history.pushState({}, '', `?id=${currentChannelId}`);
-            displayChannelInfo(data.channelDetails, data.channelId);
+            displayChannelInfo(data.channelDetails, data.channelDetails.id);
             isShowingAll = false;
             document.getElementById('allDataLabel').innerText = 'All Data';
             fetchGraphData(currentChannelId, true);
             showContent();
           } else {
-            document.getElementById(
-              'channelInfo'
-            ).innerHTML = `<p class="error">${
-              data.error || 'An error occurred while fetching data.'
-            }</p>`;
+            document.getElementById('channelInfo').innerHTML =
+              `<p class="error">${
+                data.error || 'An error occurred while fetching data.'
+              }</p>`;
             hideContent();
           }
         } catch (error) {
@@ -448,14 +441,17 @@
           hideContent();
         }
       }
+
       function showContent() {
         document.getElementById('channelInfo').style.display = 'block';
         document.getElementById('chartArea').style.display = 'flex';
       }
+
       function hideContent() {
         document.getElementById('channelInfo').style.display = 'none';
         document.getElementById('chartArea').style.display = 'none';
       }
+
       async function fetchGraphData(channelId, defaultLoad = true) {
         showLoading();
         try {
@@ -486,28 +482,31 @@
           hideLoading();
         }
       }
+
       function showLoading() {
         document.querySelectorAll('.loading-overlay').forEach(el => {
           el.style.opacity = '1';
           el.style.pointerEvents = 'auto';
         });
       }
+
       function hideLoading() {
         document.querySelectorAll('.loading-overlay').forEach(el => {
           el.style.opacity = '0';
           el.style.pointerEvents = 'none';
         });
       }
+
       function displayChannelInfo(details, channelId) {
         const formattedSubscribers = parseInt(
           details.subscriberCount
         ).toLocaleString();
         const infoHtml = `
           <div class="channel-header">
-            <img src="${details.profileImage}" alt="${details.title}" class="channel-avatar">
+            <img src="${details.profilePicture}" alt="${details.name}" class="channel-avatar">
             <div class="channel-details">
               <h2>
-                <a id="channelLink" href="https://youtube.com/channel/${channelId}" class="channel-link">${details.title}</a>
+                <a id="channelLink" href="https://youtube.com/channel/${channelId}" class="channel-link">${details.name}</a>
               </h2>
               <div class="subscriber-count">${formattedSubscribers} subscribers</div>
               <div class="channel-id">${channelId}</div>
@@ -542,8 +541,9 @@
             'channelInfo'
           ).style.background = `linear-gradient(135deg, rgba(${r}, ${g}, ${b}, 0.1), rgba(${r}, ${g}, ${b}, 0.05))`;
         };
-        img.src = details.profileImage;
+        img.src = details.profilePicture;
       }
+
       function drawSubscriberChart(data, profilePictureUrl) {
         const chartData = data.map(entry => ({
           x: new Date(entry.last_updated).getTime(),
@@ -557,6 +557,7 @@
           'Subscribers'
         );
       }
+
       function drawAverageSubsChart(data, profilePictureUrl) {
         const chartData = data.map(entry => ({
           x: new Date(entry.last_updated).getTime(),
@@ -570,6 +571,7 @@
           'Average Subscribers'
         );
       }
+
       function getVibrancy(rgb) {
         const max = Math.max(rgb[0], rgb[1], rgb[2]);
         const min = Math.min(rgb[0], rgb[1], rgb[2]);
@@ -577,11 +579,13 @@
         const brightness = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2];
         return saturation * brightness;
       }
+
       function getMostVibrantColor(palette) {
         return palette.reduce((mostVibrant, color) =>
           getVibrancy(color) > getVibrancy(mostVibrant) ? color : mostVibrant
         );
       }
+
       function setupChart(
         containerId,
         data,
@@ -739,6 +743,7 @@
         };
         img.src = profilePictureUrl;
       }
+
       function updateButtonColors(chartColor) {
         const buttons = document.querySelectorAll('.action-button');
         buttons.forEach(button => {
@@ -760,6 +765,7 @@
           themeToggle.style.backgroundColor = 'var(--card-bg)';
         });
       }
+
       function updateSearchButtonColor(chartColor) {
         const searchButton = document.getElementById('searchButton');
         searchButton.style.backgroundColor = chartColor;
@@ -772,6 +778,7 @@
           searchButton.style.backgroundColor = chartColor;
         });
       }
+
       function toggleAllValues() {
         if (currentChannelId === '') return;
         if (isShowingAll) {
@@ -784,6 +791,7 @@
           document.getElementById('allDataLabel').innerText = 'Default';
         }
       }
+
       function exportToCSV() {
         if (currentChannelData.length === 0) {
           alert('No data to export. Please search for a channel first.');
@@ -809,17 +817,19 @@
           let avgSubs = row.average_per_day;
           csvContent += `${formattedDateTime},${subscribers},${avgSubs}\n`;
         });
+        let currentDate = new Date().toISOString().split('T')[0];
         var encodedUri = encodeURI(csvContent);
         var link = document.createElement('a');
         link.setAttribute('href', encodedUri);
         link.setAttribute(
           'download',
-          `${currentChannelName}_subscribers.csv`
+          `${currentChannelName}_subscribers(${currentDate}).csv`
         );
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
       }
+
       function toggleTheme() {
         const body = document.body;
         const themeToggle = document.querySelector('.theme-toggle i');
