@@ -386,9 +386,9 @@
 
         if (channelIdFromUrl) {
           document.getElementById('channelIdInput').value = channelIdFromUrl;
-          fetchChannelData(channelIdFromUrl);
+          fetchChannelData(channelIdFromUrl, isId = true);
         } else {
-          fetch('channels.txt')
+          fetch('ids.txt')
             .then(response => response.text())
             .then(text => {
               const ids = text
@@ -397,26 +397,35 @@
                 .filter(line => line.trim() !== '');
               const randomId = ids[Math.floor(Math.random() * ids.length)];
               document.getElementById('channelIdInput').value = randomId;
-              fetchChannelData(randomId);
+              fetchChannelData(randomId, true);
             })
             .catch(error => {
-              console.error('Failed to load channels.txt:', error);
+              console.error('Failed to load ids.txt:', error);
               const fallbackId = 'UCX6OQ3DkcsbYNE6H8uQQuVA';
               document.getElementById('channelIdInput').value = fallbackId;
-              fetchChannelData(fallbackId);
+              fetchChannelData(fallbackId, true);
             });
         }
       });
-      async function fetchChannelData(channelId = '') {
-        const channelHandle =
-          channelId || document.getElementById('channelIdInput').value.trim();
+      async function fetchChannelData(channelHandle = '', isId = false) {
+        let apiUrl;
+        const channelInput =
+          channelHandle || document.getElementById('channelIdInput').value.trim();
+        const isLikelyId =
+          channelInput.startsWith('UC') && channelInput.length === 24;
+
+        if (isLikelyId || isId) {
+          apiUrl = `https://api.communitrics.com/${channelInput}`;
+        } else {
+          apiUrl = `https://api.communitrics.com/youtube/api/?channel=${channelInput}`;
+        }
+
         try {
-          const response = await fetch(
-            `https://api.communitrics.com/youtube/api/?channel=${channelHandle}`
-          );
+          const response = await fetch(apiUrl);
           const data = await response.json();
+
           if (response.ok) {
-            currentChannelId = data.channelId;
+            currentChannelId = data.channelId || channelInput;
             currentChannelName = data.channelDetails.title;
             window.history.pushState({}, '', `?id=${currentChannelId}`);
             displayChannelInfo(data.channelDetails, data.channelId);
@@ -800,13 +809,12 @@
           let avgSubs = row.average_per_day;
           csvContent += `${formattedDateTime},${subscribers},${avgSubs}\n`;
         });
-        let currentDate = new Date().toISOString().split('T')[0];
         var encodedUri = encodeURI(csvContent);
         var link = document.createElement('a');
         link.setAttribute('href', encodedUri);
         link.setAttribute(
           'download',
-          `${currentChannelName}_subscribers(${currentDate}).csv`
+          `${currentChannelName}_subscribers.csv`
         );
         document.body.appendChild(link);
         link.click();
