@@ -388,7 +388,7 @@
           document.getElementById('channelIdInput').value = channelIdFromUrl;
           fetchChannelData(channelIdFromUrl);
         } else {
-          fetch('ids.txt')
+          fetch('channels.txt')
             .then(response => response.text())
             .then(text => {
               const ids = text
@@ -400,7 +400,7 @@
               fetchChannelData(randomId);
             })
             .catch(error => {
-              console.error('Failed to load ids.txt:', error);
+              console.error('Failed to load channels.txt:', error);
               const fallbackId = 'UCX6OQ3DkcsbYNE6H8uQQuVA';
               document.getElementById('channelIdInput').value = fallbackId;
               fetchChannelData(fallbackId);
