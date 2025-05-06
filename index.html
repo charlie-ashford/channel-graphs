@@ -399,19 +399,20 @@
               .filter(line => line.trim() !== '');
             const randomId = ids[Math.floor(Math.random() * ids.length)];
             document.getElementById('channelIdInput').value = randomId;
-            await fetchChannelData(randomId); 
+            await fetchChannelData(randomId);
           } catch (error) {
             console.error('Failed to load ids.txt:', error);
             const fallbackId = 'UCX6OQ3DkcsbYNE6H8uQQuVA';
             document.getElementById('channelIdInput').value = fallbackId;
-            await fetchChannelData(fallbackId); 
+            await fetchChannelData(fallbackId);
           }
         }
       });
 
       async function fetchChannelData(channelHandle = '') {
         const channelInput =
-          channelHandle || document.getElementById('channelIdInput').value.trim();
+          channelHandle ||
+          document.getElementById('channelIdInput').value.trim();
         const isLikelyId =
           channelInput.startsWith('UC') && channelInput.length === 24;
 
@@ -430,8 +431,9 @@
             ) {
               channelIdToFetch = searchData.items[0].id;
             } else {
-              document.getElementById('channelInfo').innerHTML =
-                `<p class="error">Channel not found.</p>`;
+              document.getElementById(
+                'channelInfo'
+              ).innerHTML = `<p class="error">Channel not found.</p>`;
               hideContent();
               return;
             }
@@ -462,10 +464,11 @@
             fetchGraphData(currentChannelId, true);
             showContent();
           } else {
-            document.getElementById('channelInfo').innerHTML =
-              `<p class="error">${
-                data.error || 'An error occurred while fetching data.'
-              }</p>`;
+            document.getElementById(
+              'channelInfo'
+            ).innerHTML = `<p class="error">${
+              data.error || 'An error occurred while fetching data.'
+            }</p>`;
             hideContent();
           }
         } catch (error) {
@@ -851,14 +854,10 @@
           let avgSubs = row.average_per_day;
           csvContent += `${formattedDateTime},${subscribers},${avgSubs}\n`;
         });
-        let currentDate = new Date().toISOString().split('T')[0];
         var encodedUri = encodeURI(csvContent);
         var link = document.createElement('a');
         link.setAttribute('href', encodedUri);
-        link.setAttribute(
-          'download',
-          `${currentChannelName}_subscribers(${currentDate}).csv`
-        );
+        link.setAttribute('download', `${currentChannelName}_subscribers.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
