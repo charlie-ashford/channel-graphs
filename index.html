@@ -75,7 +75,8 @@
       .theme-toggle:hover,
       .a:hover,
       #searchButton:hover {
-        transition: background-color 0.3s ease, color 0.3s ease, transform 0.3s ease;
+        transition: background-color 0.3s ease, color 0.3s ease,
+          transform 0.3s ease;
       }
       body {
         font-family: 'Poppins', sans-serif;
@@ -382,12 +383,28 @@
       document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const channelIdFromUrl = urlParams.get('id');
+
         if (channelIdFromUrl) {
           document.getElementById('channelIdInput').value = channelIdFromUrl;
           fetchChannelData(channelIdFromUrl);
         } else {
-          document.getElementById('channelIdInput').value = 'MrBeast';
-          fetchChannelData('MrBeast');
+          fetch('ids.txt')
+            .then(response => response.text())
+            .then(text => {
+              const ids = text
+                .trim()
+                .split('\n')
+                .filter(line => line.trim() !== '');
+              const randomId = ids[Math.floor(Math.random() * ids.length)];
+              document.getElementById('channelIdInput').value = randomId;
+              fetchChannelData(randomId);
+            })
+            .catch(error => {
+              console.error('Failed to load ids.txt:', error);
+              const fallbackId = 'UCX6OQ3DkcsbYNE6H8uQQuVA';
+              document.getElementById('channelIdInput').value = fallbackId;
+              fetchChannelData(fallbackId);
+            });
         }
       });
       async function fetchChannelData(channelId = '') {
@@ -571,7 +588,6 @@
           const mostVibrantColor = getMostVibrantColor(palette);
           const chartColor = `rgb(${mostVibrantColor.join(',')})`;
 
-          // Set the loading spinner color immediately
           document.documentElement.style.setProperty(
             '--chart-color',
             chartColor
