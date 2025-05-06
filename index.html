@@ -372,6 +372,7 @@
       let currentChannelData = [];
       let currentChannelName = '';
       let isShowingAll = false;
+
       document
         .getElementById('channelIdInput')
         .addEventListener('keydown', function (event) {
@@ -380,6 +381,7 @@
             fetchChannelData();
           }
         });
+
       document.addEventListener('DOMContentLoaded', async () => {
         const urlParams = new URLSearchParams(window.location.search);
         const channelIdFromUrl = urlParams.get('id');
@@ -402,7 +404,7 @@
             console.error('Failed to load ids.txt:', error);
             const fallbackId = 'UCX6OQ3DkcsbYNE6H8uQQuVA';
             document.getElementById('channelIdInput').value = fallbackId;
-            await fetchChannelData(fallbackId);
+            await fetchChannelData(fallbackId); 
           }
         }
       });
@@ -412,14 +414,46 @@
           channelHandle || document.getElementById('channelIdInput').value.trim();
         const isLikelyId =
           channelInput.startsWith('UC') && channelInput.length === 24;
-        const apiUrl = `https://api.communitrics.com/${channelInput}`;
+
+        let channelIdToFetch;
+        if (!isLikelyId) {
+          try {
+            const searchResponse = await fetch(
+              `https://api.subscriberwars.space/search/youtube/channel/${channelInput}`
+            );
+            const searchData = await searchResponse.json();
+
+            if (
+              searchResponse.ok &&
+              searchData.items &&
+              searchData.items.length > 0
+            ) {
+              channelIdToFetch = searchData.items[0].id;
+            } else {
+              document.getElementById('channelInfo').innerHTML =
+                `<p class="error">Channel not found.</p>`;
+              hideContent();
+              return;
+            }
+          } catch (error) {
+            console.error('Failed to fetch channel ID:', error);
+            document.getElementById('channelInfo').innerHTML =
+              '<p class="error">Failed to fetch channel ID.</p>';
+            hideContent();
+            return;
+          }
+        } else {
+          channelIdToFetch = channelInput;
+        }
+
+        const apiUrl = `https://api.communitrics.com/${channelIdToFetch}`;
 
         try {
           const response = await fetch(apiUrl);
           const data = await response.json();
 
           if (response.ok) {
-            currentChannelId = data.channelDetails.id || channelInput;
+            currentChannelId = data.channelDetails.id || channelIdToFetch;
             currentChannelName = data.channelDetails.name;
             window.history.pushState({}, '', `?id=${currentChannelId}`);
             displayChannelInfo(data.channelDetails, data.channelDetails.id);
