@@ -40,6 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function fetchChannelData(channelHandle = '') {
+  showLoading();
+
   const channelInput =
     channelHandle || document.getElementById('channelIdInput').value.trim();
   const isLikelyId =
@@ -49,21 +51,20 @@ async function fetchChannelData(channelHandle = '') {
   if (!isLikelyId) {
     try {
       const searchResponse = await fetch(
-        `https://mixerno.space/api/youtube-channel-counter/search/${encodeURIComponent(channelInput)}`
+        `https://mixerno.space/api/youtube-channel-counter/search/${encodeURIComponent(
+          channelInput
+        )}`
       );
       const searchData = await searchResponse.json();
 
-      if (
-        searchResponse.ok &&
-        searchData.list &&
-        searchData.list.length > 0
-      ) {
+      if (searchResponse.ok && searchData.list && searchData.list.length > 0) {
         channelIdToFetch = searchData.list[0][2];
       } else {
         document.getElementById(
           'channelInfo'
         ).innerHTML = `<p class="error">Channel not found.</p>`;
         hideContent();
+        hideLoading();
         return;
       }
     } catch (error) {
@@ -71,6 +72,7 @@ async function fetchChannelData(channelHandle = '') {
       document.getElementById('channelInfo').innerHTML =
         '<p class="error">Failed to fetch channel ID.</p>';
       hideContent();
+      hideLoading();
       return;
     }
   } else {
@@ -90,19 +92,21 @@ async function fetchChannelData(channelHandle = '') {
       displayChannelInfo(data.channelDetails, data.channelDetails.id);
       isShowingAll = false;
       document.getElementById('allDataLabel').innerText = 'All Data';
-      fetchGraphData(currentChannelId, true);
+      await fetchGraphData(currentChannelId, true);
       showContent();
     } else {
       document.getElementById('channelInfo').innerHTML = `<p class="error">${
         data.error || 'An error occurred while fetching data.'
       }</p>`;
       hideContent();
+      hideLoading();
     }
   } catch (error) {
     console.error('Failed to fetch data:', error);
     document.getElementById('channelInfo').innerHTML =
       '<p class="error">Failed to fetch data.</p>';
     hideContent();
+    hideLoading();
   }
 }
 
