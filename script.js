@@ -49,16 +49,16 @@ async function fetchChannelData(channelHandle = '') {
   if (!isLikelyId) {
     try {
       const searchResponse = await fetch(
-        `https://api.subscriberwars.space/search/youtube/channel/${channelInput}`
+        `https://mixerno.space/api/youtube-channel-counter/search/${encodeURIComponent(channelInput)}`
       );
       const searchData = await searchResponse.json();
 
       if (
         searchResponse.ok &&
-        searchData.items &&
-        searchData.items.length > 0
+        searchData.list &&
+        searchData.list.length > 0
       ) {
-        channelIdToFetch = searchData.items[0].id;
+        channelIdToFetch = searchData.list[0][2];
       } else {
         document.getElementById(
           'channelInfo'
