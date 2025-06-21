@@ -2,6 +2,7 @@ let currentChannelId = '';
 let currentChannelData = [];
 let currentChannelName = '';
 let isShowingAll = false;
+let selectedInterval = 'all';
 
 document
   .getElementById('channelIdInput')
@@ -13,6 +14,29 @@ document
   });
 
 document.addEventListener('DOMContentLoaded', async () => {
+  initializeEventListeners();
+  await loadInitialChannel();
+});
+
+function initializeEventListeners() {
+  const exportBtn = document.getElementById('exportButton');
+  const closeBtn = document.querySelector('.close-modal');
+
+  exportBtn.addEventListener('click', openExportModal);
+  closeBtn.addEventListener('click', closeExportModal);
+
+  window.addEventListener('click', function (event) {
+    if (event.target === document.getElementById('exportModal')) {
+      closeExportModal();
+    }
+  });
+
+  document.querySelectorAll('.interval-option').forEach(button => {
+    button.addEventListener('click', handleIntervalSelection);
+  });
+}
+
+async function loadInitialChannel() {
   const urlParams = new URLSearchParams(window.location.search);
   const channelIdFromUrl = urlParams.get('id');
 
@@ -37,7 +61,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       await fetchChannelData(fallbackId);
     }
   }
-});
+}
 
 async function fetchChannelData(channelHandle = '') {
   showLoading();
@@ -110,16 +134,6 @@ async function fetchChannelData(channelHandle = '') {
   }
 }
 
-function showContent() {
-  document.getElementById('channelInfo').style.display = 'block';
-  document.getElementById('chartArea').style.display = 'flex';
-}
-
-function hideContent() {
-  document.getElementById('channelInfo').style.display = 'none';
-  document.getElementById('chartArea').style.display = 'none';
-}
-
 async function fetchGraphData(channelId, defaultLoad = true) {
   showLoading();
   try {
@@ -151,6 +165,16 @@ async function fetchGraphData(channelId, defaultLoad = true) {
   }
 }
 
+function showContent() {
+  document.getElementById('channelInfo').style.display = 'block';
+  document.getElementById('chartArea').style.display = 'flex';
+}
+
+function hideContent() {
+  document.getElementById('channelInfo').style.display = 'none';
+  document.getElementById('chartArea').style.display = 'none';
+}
+
 function showLoading() {
   document.querySelectorAll('.loading-overlay').forEach(el => {
     el.style.opacity = '1';
@@ -170,18 +194,22 @@ function displayChannelInfo(details, channelId) {
     details.subscriberCount
   ).toLocaleString();
   const infoHtml = `
-          <div class="channel-header">
-            <img src="${details.profilePicture}" alt="${details.name}" class="channel-avatar">
-            <div class="channel-details">
-              <h2>
-                <a id="channelLink" href="https://youtube.com/channel/${channelId}" class="channel-link">${details.name}</a>
-              </h2>
-              <div class="subscriber-count">${formattedSubscribers} subscribers</div>
-              <div class="channel-id">${channelId}</div>
-            </div>
-          </div>
-        `;
+    <div class="channel-header">
+      <img src="${details.profilePicture}" alt="${details.name}" class="channel-avatar">
+      <div class="channel-details">
+        <h2>
+          <a id="channelLink" href="https://youtube.com/channel/${channelId}" class="channel-link">${details.name}</a>
+        </h2>
+        <div class="subscriber-count">${formattedSubscribers} subscribers</div>
+        <div class="channel-id">${channelId}</div>
+      </div>
+    </div>
+  `;
   document.getElementById('channelInfo').innerHTML = infoHtml;
+  extractAndApplyChannelColors(details.profilePicture);
+}
+
+function extractAndApplyChannelColors(profilePictureUrl) {
   const img = new Image();
   img.crossOrigin = 'Anonymous';
   img.onload = function () {
@@ -189,10 +217,16 @@ function displayChannelInfo(details, channelId) {
     const palette = colorThief.getPalette(img, 8);
     const mostVibrantColor = getMostVibrantColor(palette);
     const channelLinkColor = `rgb(${mostVibrantColor.join(',')})`;
+
     document.documentElement.style.setProperty(
       '--chart-color',
       channelLinkColor
     );
+    document.documentElement.style.setProperty(
+      '--channel-color',
+      channelLinkColor
+    );
+
     const channelLink = document.querySelector('.channel-link');
     channelLink.addEventListener('mouseover', function () {
       this.style.color = channelLinkColor;
@@ -200,16 +234,21 @@ function displayChannelInfo(details, channelId) {
     channelLink.addEventListener('mouseout', function () {
       this.style.color = 'var(--text-primary)';
     });
+
     const avatar = document.querySelector('.channel-avatar');
     if (avatar) {
       avatar.style.borderColor = channelLinkColor;
     }
+
     const [r, g, b] = mostVibrantColor;
     document.getElementById(
       'channelInfo'
     ).style.background = `linear-gradient(135deg, rgba(${r}, ${g}, ${b}, 0.1), rgba(${r}, ${g}, ${b}, 0.05))`;
+
+    updateButtonColors(channelLinkColor);
+    updateSearchButtonColor(channelLinkColor);
   };
-  img.src = details.profilePicture;
+  img.src = profilePictureUrl;
 }
 
 function drawSubscriberChart(data, profilePictureUrl) {
@@ -381,8 +420,7 @@ function setupChart(containerId, data, profilePictureUrl, title, yAxisText) {
       ],
       credits: { enabled: false },
     });
-    updateButtonColors(chartColor);
-    updateSearchButtonColor(chartColor);
+
     const container = document.querySelector('#' + containerId).parentElement;
     if (container) {
       container.style.setProperty('--chart-border-color', chartColor);
@@ -404,6 +442,7 @@ function updateButtonColors(chartColor) {
       button.style.color = 'var(--text-primary)';
     });
   });
+
   const themeToggle = document.querySelector('.theme-toggle');
   themeToggle.style.backgroundColor = 'var(--card-bg)';
   themeToggle.addEventListener('mouseover', () => {
@@ -440,40 +479,6 @@ function toggleAllValues() {
   }
 }
 
-function exportToCSV() {
-  if (currentChannelData.length === 0) {
-    alert('No data to export. Please search for a channel first.');
-    return;
-  }
-  let csvContent = 'data:text/csv;charset=utf-8,';
-  csvContent += 'Time,Subscribers,Average Daily Subs\n';
-  currentChannelData.forEach(function (row) {
-    let dateTime = new Date(row.last_updated);
-    let formattedDateTime =
-      dateTime.getUTCFullYear() +
-      '-' +
-      ('0' + (dateTime.getUTCMonth() + 1)).slice(-2) +
-      '-' +
-      ('0' + dateTime.getUTCDate()).slice(-2) +
-      ' ' +
-      ('0' + dateTime.getUTCHours()).slice(-2) +
-      ':' +
-      ('0' + dateTime.getUTCMinutes()).slice(-2) +
-      ':' +
-      ('0' + dateTime.getUTCSeconds()).slice(-2);
-    let subscribers = row.previous_sub_count;
-    let avgSubs = row.average_per_day;
-    csvContent += `${formattedDateTime},${subscribers},${avgSubs}\n`;
-  });
-  var encodedUri = encodeURI(csvContent);
-  var link = document.createElement('a');
-  link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `${currentChannelName}_subscribers.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 function toggleTheme() {
   const body = document.body;
   const themeToggle = document.querySelector('.theme-toggle i');
@@ -481,4 +486,333 @@ function toggleTheme() {
     body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
   body.setAttribute('data-theme', newTheme);
   themeToggle.className = newTheme === 'dark' ? 'fas fa-moon' : 'fas fa-sun';
+}
+
+function openExportModal() {
+  if (currentChannelData.length === 0) {
+    alert('No data to export. Please search for a channel first.');
+    return;
+  }
+
+  const modal = document.getElementById('exportModal');
+  modal.style.display = 'block';
+
+  const channelColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--chart-color')
+    .trim();
+
+  document.querySelector('.download-btn').style.backgroundColor = channelColor;
+
+  document.querySelectorAll('.interval-option').forEach(option => {
+    if (option.classList.contains('active')) {
+      option.style.backgroundColor = channelColor;
+    }
+
+    option.addEventListener('mouseover', function () {
+      if (!this.classList.contains('active')) {
+        this.style.backgroundColor = Highcharts.color(channelColor)
+          .setOpacity(0.2)
+          .get();
+      }
+    });
+
+    option.addEventListener('mouseout', function () {
+      if (!this.classList.contains('active')) {
+        this.style.backgroundColor = 'transparent';
+      }
+    });
+  });
+
+  document
+    .querySelector('.copy-btn')
+    .addEventListener('mouseover', function () {
+      this.style.backgroundColor = channelColor;
+      this.style.color = 'white';
+    });
+
+  document.querySelector('.copy-btn').addEventListener('mouseout', function () {
+    this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+    this.style.color = 'var(--text-primary)';
+  });
+}
+
+function closeExportModal() {
+  document.getElementById('exportModal').style.display = 'none';
+}
+
+function handleIntervalSelection() {
+  document.querySelectorAll('.interval-option').forEach(btn => {
+    btn.classList.remove('active');
+    btn.style.backgroundColor = 'transparent';
+  });
+
+  this.classList.add('active');
+  const channelColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--chart-color')
+    .trim();
+  this.style.backgroundColor = channelColor;
+
+  selectedInterval = this.getAttribute('data-interval');
+}
+
+function groupByDay(data, dateField) {
+  const sorted = data
+    .slice()
+    .sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
+  const dayMap = new Map();
+
+  sorted.forEach(entry => {
+    const d = new Date(entry[dateField]);
+    const dayKey = `${d.getUTCFullYear()}-${String(
+      d.getUTCMonth() + 1
+    ).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+
+    if (!dayMap.has(dayKey)) {
+      dayMap.set(dayKey, entry);
+    }
+  });
+
+  return Array.from(dayMap.values()).sort(
+    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
+  );
+}
+
+function groupByWeek(data, dateField) {
+  const sorted = data
+    .slice()
+    .sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
+  const weekMap = new Map();
+
+  sorted.forEach(entry => {
+    const d = new Date(entry[dateField]);
+    const weekStart = getWeekStartDate(d);
+    const weekKey = weekStart.toISOString().split('T')[0];
+
+    if (!weekMap.has(weekKey)) {
+      weekMap.set(weekKey, { ...entry, [dateField]: weekStart.toISOString() });
+    }
+  });
+
+  return Array.from(weekMap.values()).sort(
+    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
+  );
+}
+
+function groupByMonth(data, dateField) {
+  const sorted = data
+    .slice()
+    .sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
+  const monthMap = new Map();
+
+  sorted.forEach(entry => {
+    const d = new Date(entry[dateField]);
+    const monthKey = `${d.getUTCFullYear()}-${String(
+      d.getUTCMonth() + 1
+    ).padStart(2, '0')}`;
+
+    if (!monthMap.has(monthKey)) {
+      const monthStart = new Date(
+        Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
+      );
+      monthMap.set(monthKey, {
+        ...entry,
+        [dateField]: monthStart.toISOString(),
+      });
+    }
+  });
+
+  return Array.from(monthMap.values()).sort(
+    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
+  );
+}
+
+function getWeekStartDate(date) {
+  const d = new Date(date);
+  const day = d.getUTCDay();
+  const diff = (day === 0 ? -6 : 1) - day; 
+  d.setUTCDate(d.getUTCDate() + diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+function calculateGrowthRate(data, interval) {
+  let result = [];
+
+  for (let i = 0; i < data.length; i++) {
+    const current = data[i];
+    let growthRate = '';
+
+    if (i > 0 && current.previous_sub_count && data[i - 1].previous_sub_count) {
+      const currentSubs = parseInt(current.previous_sub_count);
+      const prevSubs = parseInt(data[i - 1].previous_sub_count);
+      const diff = currentSubs - prevSubs;
+
+      let timeDiff;
+      if (interval === 'daily') {
+        timeDiff = 1; 
+      } else if (interval === 'weekly') {
+        timeDiff = 7;
+      } else if (interval === 'monthly') {
+        const currentDate = new Date(current.last_updated);
+        const prevDate = new Date(data[i - 1].last_updated);
+        timeDiff =
+          (currentDate.getUTCFullYear() - prevDate.getUTCFullYear()) * 12 +
+          (currentDate.getUTCMonth() - prevDate.getUTCMonth());
+        if (timeDiff === 0) timeDiff = 1;
+      }
+
+      growthRate = (diff / timeDiff).toFixed(2);
+    }
+
+    result.push({
+      ...current,
+      growth_rate: growthRate,
+    });
+  }
+
+  return result;
+}
+
+function generateCSVContent() {
+  if (currentChannelData.length === 0) {
+    return '';
+  }
+
+  let csvContent = '';
+  let filteredData = [];
+
+  switch (selectedInterval) {
+    case 'all':
+      csvContent = 'Time,Subscribers,Average Daily Subs\n';
+      filteredData = [...currentChannelData];
+      filteredData.forEach(function (row) {
+        let dateTime = new Date(row.last_updated);
+        let formattedDateTime =
+          dateTime.getUTCFullYear() +
+          '-' +
+          ('0' + (dateTime.getUTCMonth() + 1)).slice(-2) +
+          '-' +
+          ('0' + dateTime.getUTCDate()).slice(-2) +
+          ' ' +
+          ('0' + dateTime.getUTCHours()).slice(-2) +
+          ':' +
+          ('0' + dateTime.getUTCMinutes()).slice(-2) +
+          ':' +
+          ('0' + dateTime.getUTCSeconds()).slice(-2);
+
+        csvContent += `${formattedDateTime},${row.previous_sub_count || ''},${
+          row.average_per_day || ''
+        }\n`;
+      });
+      break;
+
+    case 'daily':
+      csvContent = 'Date,Subscribers,Average Daily Subs,Growth Rate\n';
+      filteredData = groupByDay(currentChannelData, 'last_updated');
+      filteredData = calculateGrowthRate(filteredData, 'daily');
+      filteredData.forEach(function (row) {
+        const date = new Date(row.last_updated);
+        const dateOnly = `${date.getUTCFullYear()}-${String(
+          date.getUTCMonth() + 1
+        ).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+        csvContent += `${dateOnly},${row.previous_sub_count || ''},${
+          row.average_per_day || ''
+        },${row.growth_rate || ''}\n`;
+      });
+      break;
+
+    case 'weekly':
+      csvContent =
+        'Week Starting,Subscribers,Average Daily Subs,Weekly Growth Rate\n';
+      filteredData = groupByWeek(currentChannelData, 'last_updated');
+      filteredData = calculateGrowthRate(filteredData, 'weekly');
+      filteredData.forEach(function (row) {
+        const weekStart = new Date(row.last_updated)
+          .toISOString()
+          .split('T')[0];
+        csvContent += `${weekStart},${row.previous_sub_count || ''},${
+          row.average_per_day || ''
+        },${row.growth_rate || ''}\n`;
+      });
+      break;
+
+    case 'monthly':
+      csvContent = 'Month,Subscribers,Average Daily Subs,Monthly Growth Rate\n';
+      filteredData = groupByMonth(currentChannelData, 'last_updated');
+      filteredData = calculateGrowthRate(filteredData, 'monthly');
+      filteredData.forEach(function (row) {
+        const date = new Date(row.last_updated);
+        const monthKey = `${date.getUTCFullYear()}-${String(
+          date.getUTCMonth() + 1
+        ).padStart(2, '0')}`;
+        csvContent += `${monthKey},${row.previous_sub_count || ''},${
+          row.average_per_day || ''
+        },${row.growth_rate || ''}\n`;
+      });
+      break;
+  }
+
+  return csvContent;
+}
+
+function exportToCSV() {
+  if (currentChannelData.length === 0) {
+    alert('No data to export. Please search for a channel first.');
+    return;
+  }
+
+  let csvContent = 'data:text/csv;charset=utf-8,' + generateCSVContent();
+  var encodedUri = encodeURI(csvContent);
+  var link = document.createElement('a');
+  link.setAttribute('href', encodedUri);
+  link.setAttribute(
+    'download',
+    `${currentChannelName}_subscribers_${selectedInterval}.csv`
+  );
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  closeExportModal();
+  showToast('Data downloaded successfully!');
+}
+
+function copyToClipboard() {
+  if (currentChannelData.length === 0) {
+    alert('No data to copy. Please search for a channel first.');
+    return;
+  }
+
+  const csvContent = generateCSVContent();
+
+  navigator.clipboard.writeText(csvContent).then(
+    function () {
+      showToast('CSV data copied to clipboard!');
+      closeExportModal();
+    },
+    function (err) {
+      console.error('Could not copy text: ', err);
+      alert('Failed to copy to clipboard. Please try again.');
+    }
+  );
+}
+
+function showToast(message) {
+  let toast = document.querySelector('.toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+
+  const channelColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--chart-color')
+    .trim();
+  toast.innerHTML = `<i class="fas fa-check-circle" style="color: ${channelColor}"></i> <span>${message}</span>`;
+
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
 }
