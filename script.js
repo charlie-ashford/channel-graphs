@@ -507,20 +507,6 @@ function openExportModal() {
     if (option.classList.contains('active')) {
       option.style.backgroundColor = channelColor;
     }
-
-    option.addEventListener('mouseover', function () {
-      if (!this.classList.contains('active')) {
-        this.style.backgroundColor = Highcharts.color(channelColor)
-          .setOpacity(0.2)
-          .get();
-      }
-    });
-
-    option.addEventListener('mouseout', function () {
-      if (!this.classList.contains('active')) {
-        this.style.backgroundColor = 'transparent';
-      }
-    });
   });
 
   document
@@ -543,7 +529,8 @@ function closeExportModal() {
 function handleIntervalSelection() {
   document.querySelectorAll('.interval-option').forEach(btn => {
     btn.classList.remove('active');
-    btn.style.backgroundColor = 'transparent';
+
+    btn.style.removeProperty('background-color');
   });
 
   this.classList.add('active');
@@ -557,39 +544,43 @@ function handleIntervalSelection() {
 
 function fillMissingPeriods(data, interval, dateField) {
   if (data.length < 2) return data;
-  
-  const sorted = [...data].sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
+
+  const sorted = [...data].sort(
+    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
+  );
   const result = [];
-  
+
   const startDate = new Date(sorted[0][dateField]);
   const endDate = new Date(sorted[sorted.length - 1][dateField]);
   let currentDate = new Date(startDate);
-  
+
   if (interval === 'daily') {
     currentDate.setUTCHours(0, 0, 0, 0);
   } else if (interval === 'weekly') {
     currentDate = getWeekStartDate(currentDate);
   } else if (interval === 'monthly') {
-    currentDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), 1));
+    currentDate = new Date(
+      Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), 1)
+    );
   }
-  
+
   let lastEntry = null;
-  
+
   while (currentDate <= endDate) {
     const periodKey = getPeriodKey(currentDate, interval);
-    const existingEntry = sorted.find(entry => 
-      getPeriodKey(new Date(entry[dateField]), interval) === periodKey
+    const existingEntry = sorted.find(
+      entry => getPeriodKey(new Date(entry[dateField]), interval) === periodKey
     );
-    
+
     if (existingEntry) {
       result.push(existingEntry);
       lastEntry = existingEntry;
     } else if (lastEntry) {
-      const newEntry = {...lastEntry};
+      const newEntry = { ...lastEntry };
       newEntry[dateField] = new Date(currentDate).toISOString();
       result.push(newEntry);
     }
-    
+
     if (interval === 'daily') {
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     } else if (interval === 'weekly') {
@@ -598,18 +589,24 @@ function fillMissingPeriods(data, interval, dateField) {
       currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
     }
   }
-  
+
   return result;
 }
 
 function getPeriodKey(date, interval) {
   if (interval === 'daily') {
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
+      2,
+      '0'
+    )}-${String(date.getUTCDate()).padStart(2, '0')}`;
   } else if (interval === 'weekly') {
     const weekStart = getWeekStartDate(date);
     return weekStart.toISOString().split('T')[0];
   } else if (interval === 'monthly') {
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
+      2,
+      '0'
+    )}`;
   }
   return '';
 }
@@ -634,7 +631,7 @@ function groupByDay(data, dateField) {
   const result = Array.from(dayMap.values()).sort(
     (a, b) => new Date(a[dateField]) - new Date(b[dateField])
   );
-  
+
   return fillMissingPeriods(result, 'daily', dateField);
 }
 
@@ -657,7 +654,7 @@ function groupByWeek(data, dateField) {
   const result = Array.from(weekMap.values()).sort(
     (a, b) => new Date(a[dateField]) - new Date(b[dateField])
   );
-  
+
   return fillMissingPeriods(result, 'weekly', dateField);
 }
 
@@ -687,14 +684,14 @@ function groupByMonth(data, dateField) {
   const result = Array.from(monthMap.values()).sort(
     (a, b) => new Date(a[dateField]) - new Date(b[dateField])
   );
-  
+
   return fillMissingPeriods(result, 'monthly', dateField);
 }
 
 function getWeekStartDate(date) {
   const d = new Date(date);
   const day = d.getUTCDay();
-  const diff = (day === 0 ? -6 : 1) - day; 
+  const diff = (day === 0 ? -6 : 1) - day;
   d.setUTCDate(d.getUTCDate() + diff);
   d.setUTCHours(0, 0, 0, 0);
   return d;
@@ -714,7 +711,7 @@ function calculateGrowthRate(data, interval) {
 
       let timeDiff;
       if (interval === 'daily') {
-        timeDiff = 1; 
+        timeDiff = 1;
       } else if (interval === 'weekly') {
         timeDiff = 7;
       } else if (interval === 'monthly') {
