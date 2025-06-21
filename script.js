@@ -555,6 +555,65 @@ function handleIntervalSelection() {
   selectedInterval = this.getAttribute('data-interval');
 }
 
+function fillMissingPeriods(data, interval, dateField) {
+  if (data.length < 2) return data;
+  
+  const sorted = [...data].sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
+  const result = [];
+  
+  const startDate = new Date(sorted[0][dateField]);
+  const endDate = new Date(sorted[sorted.length - 1][dateField]);
+  let currentDate = new Date(startDate);
+  
+  if (interval === 'daily') {
+    currentDate.setUTCHours(0, 0, 0, 0);
+  } else if (interval === 'weekly') {
+    currentDate = getWeekStartDate(currentDate);
+  } else if (interval === 'monthly') {
+    currentDate = new Date(Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), 1));
+  }
+  
+  let lastEntry = null;
+  
+  while (currentDate <= endDate) {
+    const periodKey = getPeriodKey(currentDate, interval);
+    const existingEntry = sorted.find(entry => 
+      getPeriodKey(new Date(entry[dateField]), interval) === periodKey
+    );
+    
+    if (existingEntry) {
+      result.push(existingEntry);
+      lastEntry = existingEntry;
+    } else if (lastEntry) {
+      const newEntry = {...lastEntry};
+      newEntry[dateField] = new Date(currentDate).toISOString();
+      result.push(newEntry);
+    }
+    
+    if (interval === 'daily') {
+      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+    } else if (interval === 'weekly') {
+      currentDate.setUTCDate(currentDate.getUTCDate() + 7);
+    } else if (interval === 'monthly') {
+      currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
+    }
+  }
+  
+  return result;
+}
+
+function getPeriodKey(date, interval) {
+  if (interval === 'daily') {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+  } else if (interval === 'weekly') {
+    const weekStart = getWeekStartDate(date);
+    return weekStart.toISOString().split('T')[0];
+  } else if (interval === 'monthly') {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+  return '';
+}
+
 function groupByDay(data, dateField) {
   const sorted = data
     .slice()
@@ -572,9 +631,11 @@ function groupByDay(data, dateField) {
     }
   });
 
-  return Array.from(dayMap.values()).sort(
+  const result = Array.from(dayMap.values()).sort(
     (a, b) => new Date(a[dateField]) - new Date(b[dateField])
   );
+  
+  return fillMissingPeriods(result, 'daily', dateField);
 }
 
 function groupByWeek(data, dateField) {
@@ -593,9 +654,11 @@ function groupByWeek(data, dateField) {
     }
   });
 
-  return Array.from(weekMap.values()).sort(
+  const result = Array.from(weekMap.values()).sort(
     (a, b) => new Date(a[dateField]) - new Date(b[dateField])
   );
+  
+  return fillMissingPeriods(result, 'weekly', dateField);
 }
 
 function groupByMonth(data, dateField) {
@@ -621,9 +684,11 @@ function groupByMonth(data, dateField) {
     }
   });
 
-  return Array.from(monthMap.values()).sort(
+  const result = Array.from(monthMap.values()).sort(
     (a, b) => new Date(a[dateField]) - new Date(b[dateField])
   );
+  
+  return fillMissingPeriods(result, 'monthly', dateField);
 }
 
 function getWeekStartDate(date) {

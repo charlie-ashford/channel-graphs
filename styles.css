@@ -499,7 +499,6 @@ button:hover,
   transition: opacity 0.3s ease, transform 0.3s ease;
   pointer-events: none;
   transform: translateY(20px);
-  border-left: 4px solid var(--chart-color);
 }
 
 .toast.show {
