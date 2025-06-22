@@ -136,19 +136,51 @@
                 </button>
               </div>
             </div>
-            <div class="export-actions">
-              <button class="export-btn" onclick="exportToCSV()">
-                <i class="fas fa-download"></i> Download CSV
-              </button>
-              <button class="export-btn" onclick="copyToClipboard()">
-                <i class="fas fa-copy"></i> Copy to Clipboard
-              </button>
+            <div class="export-section">
+              <div class="export-section-title">
+                <i class="fas fa-filter"></i> Data Selection
+              </div>
+              <div class="data-options">
+                <button class="data-option active" data-data-type="default">
+                  Default Data
+                </button>
+                <button class="data-option" data-data-type="all">
+                  All Data (Re-hits)
+                </button>
+              </div>
+            </div>
+
+            <div class="export-section">
+              <div class="export-section-title">
+                <i class="fas fa-chart-line"></i> Include Average Columns
+              </div>
+              <div class="columns-options">
+                <button class="columns-option active" data-columns-type="all">
+                  All Columns
+                </button>
+                <button class="columns-option" data-columns-type="basic">
+                  Subscribers Only
+                </button>
+              </div>
+            </div>
+            <div class="export-section">
+              <div class="export-section-title">
+                <i class="fas fa-file-export"></i> Export Format
+              </div>
+              <div class="export-actions">
+                <button class="export-btn" onclick="exportToCSV()">
+                  <i class="fas fa-download"></i> Download CSV
+                </button>
+                <button class="export-btn" onclick="copyToClipboard()">
+                  <i class="fas fa-copy"></i> Copy to Clipboard
+                </button>
+              </div>
             </div>
             <div class="export-info">
               <strong>Note:</strong> Daily, weekly, and monthly exports include
               a Growth Rate column showing the average subscriber gain per time
-              period. All exports include the first data point from each time
-              period.
+              period and extend to the current date. All exports include the
+              first data point from each time period.
             </div>
           </div>
         </div>

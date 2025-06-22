@@ -427,11 +427,70 @@ button:hover,
   background: color-mix(in srgb, var(--chart-color) 30%, transparent);
 }
 
+.data-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.data-option {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  font-weight: 500;
+}
+
+.data-option.active {
+  background: var(--chart-color);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.data-option:hover:not(.active) {
+  background: color-mix(in srgb, var(--chart-color) 30%, transparent);
+}
+
+.columns-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.columns-option {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+  font-weight: 500;
+}
+
+.columns-option.active {
+  background: var(--chart-color);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.columns-option:hover:not(.active) {
+  background: color-mix(in srgb, var(--chart-color) 30%, transparent);
+}
+
 .export-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
-  margin-top: 1rem;
 }
 
 .export-btn {
@@ -539,6 +598,10 @@ button:hover,
   }
 
   .interval-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .data-options {
     grid-template-columns: repeat(2, 1fr);
   }
 

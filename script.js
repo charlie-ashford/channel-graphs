@@ -1,8 +1,12 @@
 let currentChannelId = '';
 let currentChannelData = [];
+let defaultChannelData = [];
+let allChannelData = [];
 let currentChannelName = '';
 let isShowingAll = false;
 let selectedInterval = 'all';
+let selectedDataType = 'default';
+let selectedColumnsType = 'all';
 
 document
   .getElementById('channelIdInput')
@@ -35,6 +39,22 @@ function initializeEventListeners() {
     button.addEventListener('click', handleIntervalSelection);
 
     if (button.getAttribute('data-interval') === selectedInterval) {
+      button.classList.add('active');
+    }
+  });
+
+  document.querySelectorAll('.columns-option').forEach(button => {
+    button.addEventListener('click', handleColumnsSelection);
+
+    if (button.getAttribute('data-columns-type') === selectedColumnsType) {
+      button.classList.add('active');
+    }
+  });
+
+  document.querySelectorAll('.data-option').forEach(button => {
+    button.addEventListener('click', handleDataTypeSelection);
+
+    if (button.getAttribute('data-data-type') === selectedDataType) {
       button.classList.add('active');
     }
   });
@@ -141,25 +161,35 @@ async function fetchChannelData(channelHandle = '') {
 async function fetchGraphData(channelId, defaultLoad = true) {
   showLoading();
   try {
-    const url = defaultLoad
-      ? `https://api.communitrics.com/${channelId}?averages=true&all=false`
-      : `https://api.communitrics.com/${channelId}?averages=true&realTime=true`;
-    const response = await fetch(url);
-    const graphData = await response.json();
-    if (response.ok) {
-      currentChannelData = graphData.data;
-      drawSubscriberChart(
-        graphData.data,
-        graphData.channelDetails.profilePicture
-      );
-      drawAverageSubsChart(
-        graphData.data,
-        graphData.channelDetails.profilePicture
-      );
+    const defaultUrl = `https://api.communitrics.com/${channelId}?averages=true&all=false`;
+    const defaultResponse = await fetch(defaultUrl);
+    const defaultGraphData = await defaultResponse.json();
+
+    if (defaultResponse.ok) {
+      defaultChannelData = defaultGraphData.data;
+
+      const allUrl = `https://api.communitrics.com/${channelId}?averages=true&realTime=true`;
+      const allResponse = await fetch(allUrl);
+      const allGraphData = await allResponse.json();
+
+      if (allResponse.ok) {
+        allChannelData = allGraphData.data;
+
+        currentChannelData = defaultLoad ? defaultChannelData : allChannelData;
+
+        drawSubscriberChart(
+          currentChannelData,
+          defaultGraphData.channelDetails.profilePicture
+        );
+        drawAverageSubsChart(
+          currentChannelData,
+          defaultGraphData.channelDetails.profilePicture
+        );
+      }
     } else {
       console.log(
         'Error fetching graph data:',
-        graphData.error || 'An unspecified error occurred.'
+        defaultGraphData.error || 'An unspecified error occurred.'
       );
     }
   } catch (error) {
@@ -252,33 +282,25 @@ function extractAndApplyChannelColors(profilePictureUrl) {
     updateButtonColors(channelLinkColor);
     updateSearchButtonColor(channelLinkColor);
 
-    document.querySelectorAll('.interval-option').forEach(option => {
-      if (option.classList.contains('active')) {
-        option.style.backgroundColor = channelLinkColor;
-      }
-    });
+    document
+      .querySelectorAll('.interval-option, .data-option')
+      .forEach(option => {
+        if (option.classList.contains('active')) {
+          option.style.backgroundColor = channelLinkColor;
+        }
+      });
 
-    const downloadBtn = document.querySelector('.download-btn');
-    if (downloadBtn) {
-      downloadBtn.style.backgroundColor = channelLinkColor;
-    }
-
-    const copyBtn = document.querySelector('.copy-btn');
-    if (copyBtn) {
-      const newCopyBtn = copyBtn.cloneNode(true);
-      copyBtn.parentNode.replaceChild(newCopyBtn, copyBtn);
-
-      newCopyBtn.addEventListener('mouseover', function () {
+    const exportBtns = document.querySelectorAll('.export-btn');
+    exportBtns.forEach(btn => {
+      btn.addEventListener('mouseover', function () {
         this.style.backgroundColor = channelLinkColor;
         this.style.color = 'white';
       });
-      newCopyBtn.addEventListener('mouseout', function () {
+      btn.addEventListener('mouseout', function () {
         this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
         this.style.color = 'var(--text-primary)';
       });
-
-      newCopyBtn.addEventListener('click', copyToClipboard);
-    }
+    });
   };
   img.src = profilePictureUrl;
 }
@@ -501,13 +523,31 @@ function updateSearchButtonColor(chartColor) {
 function toggleAllValues() {
   if (currentChannelId === '') return;
   if (isShowingAll) {
-    fetchGraphData(currentChannelId, true);
+    currentChannelData = defaultChannelData;
     isShowingAll = false;
     document.getElementById('allDataLabel').innerText = 'All Data';
+
+    drawSubscriberChart(
+      currentChannelData,
+      document.querySelector('.channel-avatar').src
+    );
+    drawAverageSubsChart(
+      currentChannelData,
+      document.querySelector('.channel-avatar').src
+    );
   } else {
-    fetchGraphData(currentChannelId, false);
+    currentChannelData = allChannelData;
     isShowingAll = true;
     document.getElementById('allDataLabel').innerText = 'Default';
+
+    drawSubscriberChart(
+      currentChannelData,
+      document.querySelector('.channel-avatar').src
+    );
+    drawAverageSubsChart(
+      currentChannelData,
+      document.querySelector('.channel-avatar').src
+    );
   }
 }
 
@@ -526,6 +566,8 @@ function openExportModal() {
     return;
   }
 
+  selectedDataType = isShowingAll ? 'all' : 'default';
+
   const modal = document.getElementById('exportModal');
   modal.style.display = 'block';
 
@@ -533,30 +575,46 @@ function openExportModal() {
     .getPropertyValue('--chart-color')
     .trim();
 
-  document.querySelector('.download-btn').style.backgroundColor = channelColor;
-
   document.querySelectorAll('.interval-option').forEach(option => {
-    if (option.classList.contains('active')) {
+    if (option.getAttribute('data-interval') === selectedInterval) {
+      option.classList.add('active');
       option.style.backgroundColor = channelColor;
     } else {
+      option.classList.remove('active');
       option.style.backgroundColor = '';
     }
   });
 
-  const copyBtn = document.querySelector('.copy-btn');
-  const newCopyBtn = copyBtn.cloneNode(true);
-  copyBtn.parentNode.replaceChild(newCopyBtn, copyBtn);
-
-  newCopyBtn.addEventListener('mouseover', function () {
-    this.style.backgroundColor = channelColor;
-    this.style.color = 'white';
-  });
-  newCopyBtn.addEventListener('mouseout', function () {
-    this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-    this.style.color = 'var(--text-primary)';
+  document.querySelectorAll('.data-option').forEach(option => {
+    if (option.getAttribute('data-data-type') === selectedDataType) {
+      option.classList.add('active');
+      option.style.backgroundColor = channelColor;
+    } else {
+      option.classList.remove('active');
+      option.style.backgroundColor = '';
+    }
   });
 
-  newCopyBtn.addEventListener('click', copyToClipboard);
+  document.querySelectorAll('.columns-option').forEach(option => {
+    if (option.getAttribute('data-columns-type') === selectedColumnsType) {
+      option.classList.add('active');
+      option.style.backgroundColor = channelColor;
+    } else {
+      option.classList.remove('active');
+      option.style.backgroundColor = '';
+    }
+  });
+
+  document.querySelectorAll('.export-btn').forEach(btn => {
+    btn.addEventListener('mouseover', function () {
+      this.style.backgroundColor = channelColor;
+      this.style.color = 'white';
+    });
+    btn.addEventListener('mouseout', function () {
+      this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+      this.style.color = 'var(--text-primary)';
+    });
+  });
 }
 
 function closeExportModal() {
@@ -571,6 +629,21 @@ function handleIntervalSelection() {
 
   this.classList.add('active');
   selectedInterval = this.getAttribute('data-interval');
+
+  const channelColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--chart-color')
+    .trim();
+  this.style.backgroundColor = channelColor;
+}
+
+function handleDataTypeSelection() {
+  document.querySelectorAll('.data-option').forEach(btn => {
+    btn.classList.remove('active');
+    btn.style.removeProperty('background-color');
+  });
+
+  this.classList.add('active');
+  selectedDataType = this.getAttribute('data-data-type');
 
   const channelColor = getComputedStyle(document.documentElement)
     .getPropertyValue('--chart-color')
@@ -659,9 +732,7 @@ function groupByDay(data, dateField) {
       d.getUTCMonth() + 1
     ).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
-    if (!dayMap.has(dayKey)) {
-      dayMap.set(dayKey, entry);
-    }
+    dayMap.set(dayKey, entry);
   });
 
   const result = Array.from(dayMap.values()).sort(
@@ -682,9 +753,10 @@ function groupByWeek(data, dateField) {
     const weekStart = getWeekStartDate(d);
     const weekKey = weekStart.toISOString().split('T')[0];
 
-    if (!weekMap.has(weekKey)) {
-      weekMap.set(weekKey, { ...entry, [dateField]: weekStart.toISOString() });
-    }
+    const newEntry = { ...entry };
+    newEntry[dateField] = weekStart.toISOString();
+    
+    weekMap.set(weekKey, newEntry);
   });
 
   const result = Array.from(weekMap.values()).sort(
@@ -706,15 +778,12 @@ function groupByMonth(data, dateField) {
       d.getUTCMonth() + 1
     ).padStart(2, '0')}`;
 
-    if (!monthMap.has(monthKey)) {
-      const monthStart = new Date(
-        Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
-      );
-      monthMap.set(monthKey, {
-        ...entry,
-        [dateField]: monthStart.toISOString(),
-      });
-    }
+    const newEntry = { ...entry };
+    newEntry[dateField] = new Date(
+      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
+    ).toISOString();
+    
+    monthMap.set(monthKey, newEntry);
   });
 
   const result = Array.from(monthMap.values()).sort(
@@ -777,12 +846,19 @@ function generateCSVContent() {
   }
 
   let csvContent = '';
+  let dataToUse =
+    selectedDataType === 'all' ? allChannelData : defaultChannelData;
   let filteredData = [];
 
   switch (selectedInterval) {
     case 'all':
-      csvContent = 'Time,Subscribers,Average Daily Subs\n';
-      filteredData = [...currentChannelData];
+      if (selectedColumnsType === 'all') {
+        csvContent = 'Time,Subscribers,Average Daily Subs\n';
+      } else {
+        csvContent = 'Time,Subscribers\n';
+      }
+
+      filteredData = [...dataToUse];
       filteredData.forEach(function (row) {
         let dateTime = new Date(row.last_updated);
         let formattedDateTime =
@@ -798,59 +874,97 @@ function generateCSVContent() {
           ':' +
           ('0' + dateTime.getUTCSeconds()).slice(-2);
 
-        csvContent += `${formattedDateTime},${row.previous_sub_count || ''},${
-          row.average_per_day || ''
-        }\n`;
+        if (selectedColumnsType === 'all') {
+          csvContent += `${formattedDateTime},${row.previous_sub_count || ''},${
+            row.average_per_day || ''
+          }\n`;
+        } else {
+          csvContent += `${formattedDateTime},${
+            row.previous_sub_count || ''
+          }\n`;
+        }
       });
       break;
 
     case 'daily':
-      csvContent = 'Date,Subscribers,Average Daily Subs,Growth Rate\n';
-      filteredData = groupByDay(currentChannelData, 'last_updated');
-      filteredData = calculateGrowthRate(filteredData, 'daily');
-      filteredData.forEach(function (row) {
-        const date = new Date(row.last_updated);
-        const dateOnly = `${date.getUTCFullYear()}-${String(
-          date.getUTCMonth() + 1
-        ).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
-        csvContent += `${dateOnly},${row.previous_sub_count || ''},${
-          row.average_per_day || ''
-        },${row.growth_rate || ''}\n`;
-      });
-      break;
-
     case 'weekly':
-      csvContent =
-        'Week Starting,Subscribers,Average Daily Subs,Weekly Growth Rate\n';
-      filteredData = groupByWeek(currentChannelData, 'last_updated');
-      filteredData = calculateGrowthRate(filteredData, 'weekly');
-      filteredData.forEach(function (row) {
-        const weekStart = new Date(row.last_updated)
-          .toISOString()
-          .split('T')[0];
-        csvContent += `${weekStart},${row.previous_sub_count || ''},${
-          row.average_per_day || ''
-        },${row.growth_rate || ''}\n`;
-      });
-      break;
-
     case 'monthly':
-      csvContent = 'Month,Subscribers,Average Daily Subs,Monthly Growth Rate\n';
-      filteredData = groupByMonth(currentChannelData, 'last_updated');
-      filteredData = calculateGrowthRate(filteredData, 'monthly');
+      if (selectedColumnsType === 'all') {
+        if (selectedInterval === 'daily') {
+          csvContent = 'Date,Subscribers,Average Daily Subs,Growth Rate\n';
+        } else if (selectedInterval === 'weekly') {
+          csvContent =
+            'Week Starting,Subscribers,Average Daily Subs,Weekly Growth Rate\n';
+        } else {
+          csvContent =
+            'Month,Subscribers,Average Daily Subs,Monthly Growth Rate\n';
+        }
+      } else {
+        if (selectedInterval === 'daily') {
+          csvContent = 'Date,Subscribers\n';
+        } else if (selectedInterval === 'weekly') {
+          csvContent = 'Week Starting,Subscribers\n';
+        } else {
+          csvContent = 'Month,Subscribers\n';
+        }
+      }
+
+      if (selectedInterval === 'daily') {
+        filteredData = groupByDay(dataToUse, 'last_updated');
+      } else if (selectedInterval === 'weekly') {
+        filteredData = groupByWeek(dataToUse, 'last_updated');
+      } else {
+        filteredData = groupByMonth(dataToUse, 'last_updated');
+      }
+
+      if (selectedColumnsType === 'all') {
+        filteredData = calculateGrowthRate(filteredData, selectedInterval);
+      }
+
       filteredData.forEach(function (row) {
-        const date = new Date(row.last_updated);
-        const monthKey = `${date.getUTCFullYear()}-${String(
-          date.getUTCMonth() + 1
-        ).padStart(2, '0')}`;
-        csvContent += `${monthKey},${row.previous_sub_count || ''},${
-          row.average_per_day || ''
-        },${row.growth_rate || ''}\n`;
+        let dateStr = '';
+
+        if (selectedInterval === 'daily') {
+          const date = new Date(row.last_updated);
+          dateStr = `${date.getUTCFullYear()}-${String(
+            date.getUTCMonth() + 1
+          ).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+        } else if (selectedInterval === 'weekly') {
+          dateStr = new Date(row.last_updated).toISOString().split('T')[0];
+        } else {
+          const date = new Date(row.last_updated);
+          dateStr = `${date.getUTCFullYear()}-${String(
+            date.getUTCMonth() + 1
+          ).padStart(2, '0')}`;
+        }
+
+        if (selectedColumnsType === 'all') {
+          csvContent += `${dateStr},${row.previous_sub_count || ''},${
+            row.average_per_day || ''
+          },${row.growth_rate || ''}\n`;
+        } else {
+          csvContent += `${dateStr},${row.previous_sub_count || ''}\n`;
+        }
       });
       break;
   }
 
   return csvContent;
+}
+
+function handleColumnsSelection() {
+  document.querySelectorAll('.columns-option').forEach(btn => {
+    btn.classList.remove('active');
+    btn.style.removeProperty('background-color');
+  });
+
+  this.classList.add('active');
+  selectedColumnsType = this.getAttribute('data-columns-type');
+
+  const channelColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--chart-color')
+    .trim();
+  this.style.backgroundColor = channelColor;
 }
 
 function exportToCSV() {
@@ -863,10 +977,7 @@ function exportToCSV() {
   var encodedUri = encodeURI(csvContent);
   var link = document.createElement('a');
   link.setAttribute('href', encodedUri);
-  link.setAttribute(
-    'download',
-    `${currentChannelName}_subscribers_${selectedInterval}.csv`
-  );
+  link.setAttribute('download', `${currentChannelName}_subscribers.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
