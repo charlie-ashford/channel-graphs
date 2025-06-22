@@ -29,6 +29,12 @@ function initializeEventListeners() {
   exportBtn.addEventListener('click', openExportModal);
   closeBtn.addEventListener('click', closeExportModal);
 
+  document.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      closeExportModal();
+    }
+  });
+
   window.addEventListener('click', function (event) {
     if (event.target === document.getElementById('exportModal')) {
       closeExportModal();
@@ -755,7 +761,7 @@ function groupByWeek(data, dateField) {
 
     const newEntry = { ...entry };
     newEntry[dateField] = weekStart.toISOString();
-    
+
     weekMap.set(weekKey, newEntry);
   });
 
@@ -782,7 +788,7 @@ function groupByMonth(data, dateField) {
     newEntry[dateField] = new Date(
       Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
     ).toISOString();
-    
+
     monthMap.set(monthKey, newEntry);
   });
 
