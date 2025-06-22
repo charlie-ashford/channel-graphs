@@ -569,24 +569,93 @@ button:hover,
   font-size: 1.2rem;
 }
 
+@media (max-width: 1200px) {
+  .container {
+    transform: scale(0.95);
+  }
+}
+
+@media (max-width: 992px) {
+  .container {
+    transform: scale(1);
+    padding: 1.5rem;
+  }
+
+  .top-bar {
+    gap: 1.5rem;
+  }
+
+  .action-button {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+  }
+
+  .theme-toggle {
+    width: 50px;
+    height: 50px;
+  }
+}
+
 @media (max-width: 768px) {
   .container {
-    padding: 1.5rem 1rem;
+    padding: 1.25rem 1rem;
   }
 
   .top-bar {
     grid-template-columns: 1fr;
-    gap: 1.5rem;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 0.75rem;
+    align-items: stretch;
   }
 
   #channelIdInput {
-    padding-right: 120px;
-    font-size: 0.9rem;
+    padding: 0.9rem 1.25rem;
+    padding-right: 110px;
+    font-size: 0.95rem;
+    border-radius: 10px;
   }
 
   #searchButton {
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1.25rem;
     font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
+  .action-button {
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    min-height: 45px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .theme-toggle {
+    width: 45px;
+    height: 45px;
+  }
+
+  .channel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .channel-avatar {
+    width: 70px;
+    height: 70px;
   }
 
   .channel-title {
@@ -597,15 +666,372 @@ button:hover,
     font-size: 1.1rem;
   }
 
-  .interval-options {
-    grid-template-columns: repeat(2, 1fr);
+  #channelInfo {
+    padding: 1.5rem;
+    margin-bottom: 2rem;
   }
 
-  .data-options {
-    grid-template-columns: repeat(2, 1fr);
+  .chart-container {
+    padding: 1.25rem;
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 576px) {
+  .container {
+    padding: 1rem 0.75rem;
+  }
+
+  .controls {
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: 1fr;
+  }
+
+  .theme-toggle {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: stretch;
+    height: auto;
+  }
+
+  #channelIdInput {
+    padding: 0.8rem 1rem;
+    padding-right: 100px;
+    font-size: 0.9rem;
+  }
+
+  #searchButton {
+    padding: 0.7rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .action-button {
+    padding: 0.8rem 0.75rem;
+    font-size: 0.85rem;
+    gap: 0.3rem;
+    min-height: 40px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .controls > * {
+    min-height: 40px;
+  }
+
+  .theme-toggle {
+    width: 40px;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .theme-toggle i {
+    font-size: 1rem;
+  }
+
+  .channel-avatar {
+    width: 60px;
+    height: 60px;
+    border-width: 2px;
+  }
+
+  .channel-title {
+    font-size: 1.3rem;
+  }
+
+  .subscriber-count {
+    font-size: 1rem;
+  }
+
+  .channel-id {
+    font-size: 0.8rem;
+  }
+
+  #channelInfo {
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-radius: 12px;
+  }
+
+  .chart-container {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    min-height: 200px;
+  }
+
+  .highcharts-title {
+    font-size: 16px !important;
+  }
+
+  .highcharts-axis-labels text {
+    font-size: 10px !important;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 3% auto;
+    border-radius: 16px;
+  }
+
+  .modal-header {
+    padding: 1.5rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.4rem;
+  }
+
+  .close-modal {
+    top: 1.5rem;
+    right: 1.5rem;
+    width: 32px;
+    height: 32px;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+  }
+
+  .export-options {
+    gap: 2rem;
+  }
+
+  .interval-options,
+  .data-options,
+  .columns-options {
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: 1fr;
+  }
+
+  .interval-option,
+  .data-option,
+  .columns-option {
+    padding: 0.8rem 0;
+    font-size: 0.9rem;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 40px;
+  }
+
+  .export-btn {
+    padding: 1rem;
+    font-size: 0.95rem;
+    border-radius: 10px;
+    min-height: 50px;
   }
 
   .export-actions {
+    grid-auto-rows: 1fr;
+  }
+
+  .export-info {
+    font-size: 0.8rem;
+  }
+
+  .toast {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    width: auto;
+    font-size: 0.9rem;
+    padding: 0.9rem 1.2rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .container {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .top-bar {
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .controls {
+    gap: 0.5rem;
+  }
+
+  #channelIdInput {
+    padding: 0.75rem 0.9rem;
+    padding-right: 90px;
+    font-size: 0.85rem;
+  }
+
+  #searchButton {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.75rem;
+  }
+
+  .action-button {
+    padding: 0.7rem 0.6rem;
+    font-size: 0.8rem;
+    min-height: 38px;
+  }
+
+  .action-button i {
+    font-size: 0.9rem;
+  }
+
+  .theme-toggle {
+    width: 38px;
+    min-height: 38px;
+  }
+
+  .channel-avatar {
+    width: 50px;
+    height: 50px;
+  }
+
+  .channel-title {
+    font-size: 1.2rem;
+  }
+
+  .subscriber-count {
+    font-size: 0.9rem;
+  }
+
+  .chart-container {
+    min-height: 180px;
+  }
+
+  .interval-option,
+  .data-option,
+  .columns-option {
+    padding: 0.7rem 0;
+    font-size: 0.85rem;
+    min-height: 38px;
+  }
+
+  .export-btn {
+    padding: 0.9rem 0.7rem;
+    font-size: 0.9rem;
+    gap: 0.5rem;
+    min-height: 45px;
+  }
+
+  .export-section-title {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 320px) {
+  .controls {
     grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .theme-toggle {
+    grid-column: auto;
+    grid-row: auto;
+    justify-self: end;
+    height: 36px;
+    width: 36px;
+    min-height: 36px;
+  }
+
+  #channelIdInput {
+    font-size: 0.8rem;
+  }
+
+  .action-button {
+    flex-direction: row;
+    justify-content: center;
+    min-height: 36px;
+  }
+
+  .action-button span {
+    display: inline-block;
+  }
+
+  .action-button i {
+    margin-right: 0.5rem;
+  }
+
+  .export-options {
+    gap: 1.5rem;
+  }
+
+  .interval-options > *,
+  .data-options > *,
+  .columns-options > * {
+    min-height: 36px;
+  }
+
+  .export-actions > * {
+    min-height: 42px;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .container {
+    padding: 0.75rem;
+  }
+
+  .top-bar {
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .controls {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    height: 40px;
+  }
+
+  .controls > * {
+    height: 100%;
+  }
+
+  .action-button {
+    padding: 0 1rem;
+    min-height: 40px;
+  }
+
+  .theme-toggle {
+    width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  #chartArea {
+    gap: 1rem;
+  }
+
+  .chart-container {
+    min-height: 150px;
+  }
+
+  .modal-content {
+    margin: 2% auto;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .export-options {
+    gap: 1.5rem;
+  }
+
+  .export-section {
+    gap: 0.8rem;
+  }
+
+  .interval-options,
+  .data-options,
+  .columns-options {
+    grid-auto-rows: 40px;
+  }
+
+  .export-actions {
+    grid-auto-rows: 45px;
   }
 }
