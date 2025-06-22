@@ -33,6 +33,10 @@ function initializeEventListeners() {
 
   document.querySelectorAll('.interval-option').forEach(button => {
     button.addEventListener('click', handleIntervalSelection);
+
+    if (button.getAttribute('data-interval') === selectedInterval) {
+      button.classList.add('active');
+    }
   });
 }
 
@@ -247,6 +251,34 @@ function extractAndApplyChannelColors(profilePictureUrl) {
 
     updateButtonColors(channelLinkColor);
     updateSearchButtonColor(channelLinkColor);
+
+    document.querySelectorAll('.interval-option').forEach(option => {
+      if (option.classList.contains('active')) {
+        option.style.backgroundColor = channelLinkColor;
+      }
+    });
+
+    const downloadBtn = document.querySelector('.download-btn');
+    if (downloadBtn) {
+      downloadBtn.style.backgroundColor = channelLinkColor;
+    }
+
+    const copyBtn = document.querySelector('.copy-btn');
+    if (copyBtn) {
+      const newCopyBtn = copyBtn.cloneNode(true);
+      copyBtn.parentNode.replaceChild(newCopyBtn, copyBtn);
+
+      newCopyBtn.addEventListener('mouseover', function () {
+        this.style.backgroundColor = channelLinkColor;
+        this.style.color = 'white';
+      });
+      newCopyBtn.addEventListener('mouseout', function () {
+        this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        this.style.color = 'var(--text-primary)';
+      });
+
+      newCopyBtn.addEventListener('click', copyToClipboard);
+    }
   };
   img.src = profilePictureUrl;
 }
@@ -506,20 +538,25 @@ function openExportModal() {
   document.querySelectorAll('.interval-option').forEach(option => {
     if (option.classList.contains('active')) {
       option.style.backgroundColor = channelColor;
+    } else {
+      option.style.backgroundColor = '';
     }
   });
 
-  document
-    .querySelector('.copy-btn')
-    .addEventListener('mouseover', function () {
-      this.style.backgroundColor = channelColor;
-      this.style.color = 'white';
-    });
+  const copyBtn = document.querySelector('.copy-btn');
+  const newCopyBtn = copyBtn.cloneNode(true);
+  copyBtn.parentNode.replaceChild(newCopyBtn, copyBtn);
 
-  document.querySelector('.copy-btn').addEventListener('mouseout', function () {
+  newCopyBtn.addEventListener('mouseover', function () {
+    this.style.backgroundColor = channelColor;
+    this.style.color = 'white';
+  });
+  newCopyBtn.addEventListener('mouseout', function () {
     this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
     this.style.color = 'var(--text-primary)';
   });
+
+  newCopyBtn.addEventListener('click', copyToClipboard);
 }
 
 function closeExportModal() {
@@ -529,17 +566,16 @@ function closeExportModal() {
 function handleIntervalSelection() {
   document.querySelectorAll('.interval-option').forEach(btn => {
     btn.classList.remove('active');
-
     btn.style.removeProperty('background-color');
   });
 
   this.classList.add('active');
+  selectedInterval = this.getAttribute('data-interval');
+
   const channelColor = getComputedStyle(document.documentElement)
     .getPropertyValue('--chart-color')
     .trim();
   this.style.backgroundColor = channelColor;
-
-  selectedInterval = this.getAttribute('data-interval');
 }
 
 function fillMissingPeriods(data, interval, dateField) {
