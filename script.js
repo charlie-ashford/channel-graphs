@@ -821,19 +821,13 @@ function calculateGrowthRate(data, interval) {
       const diff = currentSubs - prevSubs;
 
       let timeDiff;
-      if (interval === 'daily') {
+      if (
+        interval === 'daily' ||
+        interval === 'weekly' ||
+        interval === 'monthly'
+      ) {
         timeDiff = 1;
-      } else if (interval === 'weekly') {
-        timeDiff = 1;
-      } else if (interval === 'monthly') {
-        const currentDate = new Date(current.last_updated);
-        const prevDate = new Date(data[i - 1].last_updated);
-        timeDiff =
-          (currentDate.getUTCFullYear() - prevDate.getUTCFullYear()) * 12 +
-          (currentDate.getUTCMonth() - prevDate.getUTCMonth());
-        if (timeDiff === 0) timeDiff = 1;
       }
-
       growthRate = (diff / timeDiff).toFixed(0);
     }
 
