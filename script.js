@@ -824,7 +824,7 @@ function calculateGrowthRate(data, interval) {
       if (interval === 'daily') {
         timeDiff = 1;
       } else if (interval === 'weekly') {
-        timeDiff = 7;
+        timeDiff = 1;
       } else if (interval === 'monthly') {
         const currentDate = new Date(current.last_updated);
         const prevDate = new Date(data[i - 1].last_updated);
@@ -834,7 +834,7 @@ function calculateGrowthRate(data, interval) {
         if (timeDiff === 0) timeDiff = 1;
       }
 
-      growthRate = (diff / timeDiff).toFixed(2);
+      growthRate = (diff / timeDiff).toFixed(0);
     }
 
     result.push({
