@@ -891,13 +891,11 @@ function generateCSVContent() {
     case 'monthly':
       if (selectedColumnsType === 'all') {
         if (selectedInterval === 'daily') {
-          csvContent = 'Date,Subscribers,Average Daily Subs,Growth Rate\n';
+          csvContent = 'Date,Subscribers,Average Daily Subs,Growth\n';
         } else if (selectedInterval === 'weekly') {
-          csvContent =
-            'Week Starting,Subscribers,Average Daily Subs,Weekly Growth Rate\n';
+          csvContent = 'Week,Subscribers,Average Daily Subs,Weekly Growth\n';
         } else {
-          csvContent =
-            'Month,Subscribers,Average Daily Subs,Monthly Growth Rate\n';
+          csvContent = 'Month,Subscribers,Average Daily Subs,Monthly Growth\n';
         }
       } else {
         if (selectedInterval === 'daily') {
