@@ -203,11 +203,25 @@ button:hover,
     rgba(255, 107, 107, 0.05)
   );
   border-radius: 16px;
-  padding: 2rem;
-  margin-bottom: 3rem;
+  padding: 1.8rem;
+  margin-bottom: 2.5rem;
   display: none;
   border: 1px solid rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(8px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+#channelInfo::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: var(--channel-color);
+  opacity: 0.8;
 }
 
 .channel-header {
@@ -221,43 +235,64 @@ button:hover,
   height: 80px;
   border-radius: 50%;
   border: 3px solid var(--card-bg);
-  transition: transform 0.3s ease;
-}
-
-.channel-avatar:hover {
-  transform: scale(1.05);
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .channel-details {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .channel-title {
-  font-size: 1.75rem;
-  margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.channel-link {
-  color: inherit;
-  text-decoration: none;
-}
-
-.subscriber-count {
-  font-size: 1.25rem;
-  color: var(--text-secondary);
+  font-size: 1.6rem;
+  margin-bottom: 0;
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.channel-id {
-  font-size: 0.9rem;
+.channel-link {
+  color: inherit;
+  text-decoration: none;
+  position: relative;
+  transition: color 0.3s ease;
+}
+
+.channel-link:hover {
+  color: var(--channel-color);
+}
+
+.channel-link::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: -3px;
+  left: 0;
+  background-color: var(--channel-color);
+  transition: width 0.3s ease;
+}
+
+.channel-link:hover::after {
+  width: 100%;
+}
+
+.subscriber-count {
+  font-size: 1.15rem;
   color: var(--text-secondary);
-  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.1rem;
+}
+
+.channel-id {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  margin-top: 0.1rem;
 }
 
 #chartArea {
