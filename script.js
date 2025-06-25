@@ -320,7 +320,7 @@ function drawSubscriberChart(data, profilePictureUrl) {
     'subscriberChart',
     chartData,
     profilePictureUrl,
-    'Subscriber Growth',
+    'Subscriber Count',
     'Subscribers'
   );
 }
