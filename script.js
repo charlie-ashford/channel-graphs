@@ -693,322 +693,10 @@ function handleTimezoneSelection() {
   this.style.backgroundColor = channelColor;
 }
 
-function linearInterpolate(x0, y0, x1, y1, x) {
-  if (x1 === x0) return y0;
-  return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
-}
-
-function interpolateHourlyData(data) {
-  if (data.length < 2) return data;
-
-  data.sort((a, b) => new Date(a.last_updated) - new Date(b.last_updated));
-
-  const start = new Date(data[0].last_updated);
-  start.setUTCMinutes(0, 0, 0);
-  if (start < new Date(data[0].last_updated)) {
-    start.setUTCHours(start.getUTCHours() + 1);
-  }
-
-  const end = new Date(data[data.length - 1].last_updated);
-  end.setUTCMinutes(0, 0, 0);
-
-  const hourly = [];
-  let i = 0;
-
-  for (
-    let t = new Date(start);
-    t <= end;
-    t = new Date(t.setUTCHours(t.getUTCHours() + 1))
-  ) {
-    const tMillis = t.getTime();
-
-    while (
-      i < data.length - 1 &&
-      new Date(data[i + 1].last_updated).getTime() < tMillis
-    ) {
-      i++;
-    }
-
-    const t0 = new Date(data[i].last_updated).getTime();
-    const v0 = parseInt(data[i].previous_sub_count);
-
-    let t1, v1;
-    if (i + 1 < data.length) {
-      t1 = new Date(data[i + 1].last_updated).getTime();
-      v1 = parseInt(data[i + 1].previous_sub_count);
-    } else {
-      t1 = t0;
-      v1 = v0;
-    }
-
-    let value;
-    if (tMillis <= t0) {
-      value = v0;
-    } else if (tMillis >= t1) {
-      value = v1;
-    } else {
-      value = Math.round(linearInterpolate(t0, v0, t1, v1, tMillis));
-    }
-
-    let avgValue;
-    if (data[i].average_per_day && data[i + 1]?.average_per_day) {
-      const avg0 = parseInt(data[i].average_per_day);
-      const avg1 = parseInt(data[i + 1].average_per_day);
-
-      if (tMillis <= t0) {
-        avgValue = avg0;
-      } else if (tMillis >= t1) {
-        avgValue = avg1;
-      } else {
-        avgValue = Math.round(linearInterpolate(t0, avg0, t1, avg1, tMillis));
-      }
-    } else {
-      avgValue = data[i].average_per_day
-        ? parseInt(data[i].average_per_day)
-        : null;
-    }
-
-    const formattedTime = t.toISOString().replace(/\.\d+Z$/, '.000Z');
-
-    hourly.push({
-      last_updated: formattedTime,
-      previous_sub_count: value.toString(),
-      average_per_day: avgValue ? avgValue.toString() : null,
-    });
-  }
-
-  return hourly;
-}
-
-function fillMissingPeriods(data, interval, dateField) {
-  if (data.length < 2) return data;
-
-  const sorted = [...data].sort(
-    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
-  );
-  const result = [];
-
-  const startDate = new Date(sorted[0][dateField]);
-  const endDate = new Date(sorted[sorted.length - 1][dateField]);
-  let currentDate = new Date(startDate);
-
-  if (interval === 'hourly') {
-    currentDate.setUTCMinutes(0, 0, 0, 0);
-  } else if (interval === 'daily') {
-    currentDate.setUTCHours(0, 0, 0, 0);
-  } else if (interval === 'weekly') {
-    currentDate = getWeekStartDate(currentDate);
-  } else if (interval === 'monthly') {
-    currentDate = new Date(
-      Date.UTC(currentDate.getUTCFullYear(), currentDate.getUTCMonth(), 1)
-    );
-  }
-
-  let lastEntry = null;
-  let dataIndex = 0;
-
-  while (currentDate <= endDate) {
-    const currentPeriodKey = getPeriodKey(currentDate, interval);
-    let foundEntry = null;
-
-    for (let i = dataIndex; i < sorted.length; i++) {
-      const entryDate = new Date(sorted[i][dateField]);
-      const entryPeriodKey = getPeriodKey(entryDate, interval);
-      if (entryPeriodKey === currentPeriodKey) {
-        foundEntry = sorted[i];
-      } else if (entryDate > currentDate) {
-        break;
-      }
-    }
-
-    if (foundEntry) {
-      result.push(foundEntry);
-      lastEntry = foundEntry;
-    } else if (lastEntry) {
-      const newEntry = { ...lastEntry };
-      newEntry[dateField] = new Date(currentDate).toISOString();
-      result.push(newEntry);
-    }
-
-    if (interval === 'hourly') {
-      currentDate.setUTCHours(currentDate.getUTCHours() + 1);
-    } else if (interval === 'daily') {
-      currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-    } else if (interval === 'weekly') {
-      currentDate.setUTCDate(currentDate.getUTCDate() + 7);
-    } else if (interval === 'monthly') {
-      currentDate.setUTCMonth(currentDate.getUTCMonth() + 1);
-    }
-  }
-
-  return result;
-}
-
-function getPeriodKey(date, interval) {
-  if (interval === 'hourly') {
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
-      2,
-      '0'
-    )}-${String(date.getUTCDate()).padStart(2, '0')} ${String(
-      date.getUTCHours()
-    ).padStart(2, '0')}`;
-  } else if (interval === 'daily') {
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
-      2,
-      '0'
-    )}-${String(date.getUTCDate()).padStart(2, '0')}`;
-  } else if (interval === 'weekly') {
-    const weekStart = getWeekStartDate(date);
-    return weekStart.toISOString().split('T')[0];
-  } else if (interval === 'monthly') {
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
-      2,
-      '0'
-    )}`;
-  }
-  return '';
-}
-
-function groupByHour(data, dateField) {
-  const sorted = data
-    .slice()
-    .sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
-  const hourMap = new Map();
-
-  sorted.forEach(entry => {
-    const d = new Date(entry[dateField]);
-    d.setUTCMinutes(0, 0, 0, 0);
-    const hourKey = `${d.getUTCFullYear()}-${String(
-      d.getUTCMonth() + 1
-    ).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(
-      d.getUTCHours()
-    ).padStart(2, '0')}`;
-
-    hourMap.set(hourKey, {
-      ...entry,
-      [dateField]: d.toISOString(),
-    });
-  });
-
-  const result = Array.from(hourMap.values()).sort(
-    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
-  );
-
-  return fillMissingPeriods(result, 'hourly', dateField);
-}
-
-function groupByDay(data, dateField) {
-  const sorted = data
-    .slice()
-    .sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
-  const dayMap = new Map();
-
-  sorted.forEach(entry => {
-    const d = new Date(entry[dateField]);
-    d.setUTCHours(0, 0, 0, 0);
-    const dayKey = `${d.getUTCFullYear()}-${String(
-      d.getUTCMonth() + 1
-    ).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
-
-    dayMap.set(dayKey, {
-      ...entry,
-      [dateField]: d.toISOString(),
-    });
-  });
-
-  const result = Array.from(dayMap.values()).sort(
-    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
-  );
-
-  return fillMissingPeriods(result, 'daily', dateField);
-}
-
-function groupByWeek(data, dateField) {
-  const sorted = data
-    .slice()
-    .sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
-  const weekMap = new Map();
-
-  sorted.forEach(entry => {
-    const d = new Date(entry[dateField]);
-    const weekStart = getWeekStartDate(d);
-    const weekKey = weekStart.toISOString().split('T')[0];
-
-    weekMap.set(weekKey, { ...entry, [dateField]: weekStart.toISOString() });
-  });
-
-  const result = Array.from(weekMap.values()).sort(
-    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
-  );
-
-  return fillMissingPeriods(result, 'weekly', dateField);
-}
-
-function groupByMonth(data, dateField) {
-  const sorted = data
-    .slice()
-    .sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
-  const monthMap = new Map();
-
-  sorted.forEach(entry => {
-    const d = new Date(entry[dateField]);
-    const monthKey = `${d.getUTCFullYear()}-${String(
-      d.getUTCMonth() + 1
-    ).padStart(2, '0')}`;
-
-    const normalizedDate = new Date(
-      Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
-    ).toISOString();
-
-    monthMap.set(monthKey, { ...entry, [dateField]: normalizedDate });
-  });
-
-  const result = Array.from(monthMap.values()).sort(
-    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
-  );
-
-  return fillMissingPeriods(result, 'monthly', dateField);
-}
-
-function getWeekStartDate(date) {
-  const d = new Date(date);
-  const day = d.getUTCDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  d.setUTCDate(d.getUTCDate() + diff);
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
-}
-
-function calculateGrowthRate(data, interval) {
-  let result = [];
-
-  for (let i = 0; i < data.length; i++) {
-    const current = data[i];
-    let growthRate = '';
-
-    if (i > 0 && current.previous_sub_count && data[i - 1].previous_sub_count) {
-      const currentSubs = parseInt(current.previous_sub_count);
-      const prevSubs = parseInt(data[i - 1].previous_sub_count);
-      const diff = currentSubs - prevSubs;
-
-      let timeDiff = 1;
-      growthRate = (diff / timeDiff).toFixed(0);
-    }
-
-    result.push({
-      ...current,
-      growth_rate: growthRate,
-    });
-  }
-
-  return result;
-}
-
 function formatExportDate(isoString, intervalType, timezone) {
   const date = new Date(isoString);
-  const timeZone = timezone === 'EST' ? 'America/New_York' : 'UTC';
 
-  const options = {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -1016,14 +704,16 @@ function formatExportDate(isoString, intervalType, timezone) {
     minute: '2-digit',
     second: '2-digit',
     hour12: false,
-    timeZone: timeZone,
-  };
+    timeZone: timezone === 'America/New_York' ? 'America/New_York' : 'UTC',
+  });
 
-  const formattedString = date.toLocaleString('en-US', options);
-
-  const [datePartRaw, timePartRaw] = formattedString.split(', ');
-  const [month, day, year] = datePartRaw.split('/');
-  const [hour, minute, second] = timePartRaw.split(':');
+  const parts = formatter.formatToParts(date);
+  const year = parts.find(p => p.type === 'year').value;
+  const month = parts.find(p => p.type === 'month').value;
+  const day = parts.find(p => p.type === 'day').value;
+  const hour = parts.find(p => p.type === 'hour').value;
+  const minute = parts.find(p => p.type === 'minute').value;
+  const second = parts.find(p => p.type === 'second').value;
 
   const yyyyMmDd = `${year}-${month}-${day}`;
   const hhMmSs = `${hour}:${minute}:${second}`;
@@ -1044,6 +734,357 @@ function formatExportDate(isoString, intervalType, timezone) {
   }
 }
 
+function linearInterpolate(x0, y0, x1, y1, x) {
+  if (x1 === x0) return y0;
+  return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+}
+
+function interpolateHourlyData(data) {
+  if (data.length < 2) return data;
+
+  const sortedData = [...data].sort(
+    (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
+  );
+
+  const startTime = new Date(sortedData[0].last_updated);
+  const endTime = new Date(sortedData[sortedData.length - 1].last_updated);
+
+  const start = new Date(startTime);
+  start.setUTCMinutes(0, 0, 0);
+  if (start <= startTime) {
+    start.setUTCHours(start.getUTCHours() + 1);
+  }
+
+  const end = new Date(endTime);
+  end.setUTCMinutes(0, 0, 0);
+
+  const interpolatedData = [];
+  let dataIndex = 0;
+
+  for (
+    let currentTime = new Date(start);
+    currentTime <= end;
+    currentTime.setUTCHours(currentTime.getUTCHours() + 1)
+  ) {
+    const targetTime = currentTime.getTime();
+
+    while (
+      dataIndex < sortedData.length - 1 &&
+      new Date(sortedData[dataIndex + 1].last_updated).getTime() < targetTime
+    ) {
+      dataIndex++;
+    }
+
+    const beforePoint = sortedData[dataIndex];
+    const afterPoint = sortedData[dataIndex + 1] || beforePoint;
+
+    const beforeTime = new Date(beforePoint.last_updated).getTime();
+    const afterTime = new Date(afterPoint.last_updated).getTime();
+
+    const beforeSubs = parseInt(beforePoint.previous_sub_count);
+    const afterSubs = parseInt(afterPoint.previous_sub_count);
+
+    const beforeAvg = beforePoint.average_per_day
+      ? parseInt(beforePoint.average_per_day)
+      : 0;
+    const afterAvg = afterPoint.average_per_day
+      ? parseInt(afterPoint.average_per_day)
+      : beforeAvg;
+
+    let interpolatedSubs, interpolatedAvg;
+
+    if (targetTime <= beforeTime) {
+      interpolatedSubs = beforeSubs;
+      interpolatedAvg = beforeAvg;
+    } else if (targetTime >= afterTime || beforeTime === afterTime) {
+      interpolatedSubs = afterSubs;
+      interpolatedAvg = afterAvg;
+    } else {
+      interpolatedSubs = Math.round(
+        linearInterpolate(
+          beforeTime,
+          beforeSubs,
+          afterTime,
+          afterSubs,
+          targetTime
+        )
+      );
+      interpolatedAvg = Math.round(
+        linearInterpolate(
+          beforeTime,
+          beforeAvg,
+          afterTime,
+          afterAvg,
+          targetTime
+        )
+      );
+    }
+
+    interpolatedData.push({
+      last_updated: new Date(currentTime).toISOString(),
+      previous_sub_count: interpolatedSubs.toString(),
+      average_per_day: interpolatedAvg.toString(),
+    });
+  }
+
+  return interpolatedData;
+}
+
+function getESTHour(utcDate) {
+  const estFormatter = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    hour12: false,
+    timeZone: 'America/New_York',
+  });
+
+  return parseInt(estFormatter.format(utcDate));
+}
+
+function getESTOffset(date) {
+  const utcDate = new Date(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+    date.getUTCHours(),
+    date.getUTCMinutes(),
+    date.getUTCSeconds()
+  );
+  const localDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    date.getHours(),
+    date.getMinutes(),
+    date.getSeconds()
+  );
+
+  return utcDate.getTime() - localDate.getTime();
+}
+
+function getPeriodKey(date, interval) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+
+  switch (interval) {
+    case 'hourly':
+      return `${year}-${month}-${day} ${hour}`;
+    case 'daily':
+      return `${year}-${month}-${day}`;
+    case 'weekly':
+      const weekStart = getWeekStartDateLocal(date);
+      return `${weekStart.getFullYear()}-${String(
+        weekStart.getMonth() + 1
+      ).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+    case 'monthly':
+      return `${year}-${month}`;
+    default:
+      return date.toISOString();
+  }
+}
+
+function getWeekStartDateLocal(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function getWeekStartDate(date) {
+  const d = new Date(date);
+  const day = d.getUTCDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  d.setUTCHours(0, 0, 0, 0);
+  return d;
+}
+
+function groupByPeriod(data, interval, dateField) {
+  if (data.length === 0) return [];
+
+  const sorted = [...data].sort(
+    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
+  );
+
+  const isEST = selectedTimezone === 'America/New_York';
+
+  const grouped = new Map();
+
+  sorted.forEach(entry => {
+    const utcDate = new Date(entry[dateField]);
+
+    let targetDate;
+    if (isEST) {
+      const estFormatter = new Intl.DateTimeFormat('en-CA', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: 'America/New_York',
+      });
+
+      const parts = estFormatter.formatToParts(utcDate);
+      const year = parseInt(parts.find(p => p.type === 'year').value);
+      const month = parseInt(parts.find(p => p.type === 'month').value) - 1;
+      const day = parseInt(parts.find(p => p.type === 'day').value);
+      const hour = parseInt(parts.find(p => p.type === 'hour').value);
+      const minute = parseInt(parts.find(p => p.type === 'minute').value);
+      const second = parseInt(parts.find(p => p.type === 'second').value);
+
+      targetDate = new Date(year, month, day, hour, minute, second);
+    } else {
+      targetDate = new Date(utcDate);
+    }
+
+    const periodKey = getPeriodKey(targetDate, interval);
+
+    if (isEST && interval !== 'hourly') {
+      const existingEntry = grouped.get(periodKey);
+
+      if (!existingEntry) {
+        grouped.set(periodKey, entry);
+      } else {
+        const currentEntryEST = getESTHour(new Date(entry[dateField]));
+        const existingEntryEST = getESTHour(new Date(existingEntry[dateField]));
+
+        const currentDistance = Math.abs(currentEntryEST);
+        const existingDistance = Math.abs(existingEntryEST);
+
+        if (currentDistance < existingDistance) {
+          grouped.set(periodKey, entry);
+        } else if (currentDistance === existingDistance) {
+          if (new Date(entry[dateField]) > new Date(existingEntry[dateField])) {
+            grouped.set(periodKey, entry);
+          }
+        }
+      }
+    } else {
+      if (
+        !grouped.has(periodKey) ||
+        new Date(entry[dateField]) > new Date(grouped.get(periodKey)[dateField])
+      ) {
+        grouped.set(periodKey, entry);
+      }
+    }
+  });
+
+  const result = Array.from(grouped.values()).map(entry => {
+    const date = new Date(entry[dateField]);
+    let normalizedDate;
+
+    if (isEST && interval !== 'hourly') {
+      const estFormatter = new Intl.DateTimeFormat('en-CA', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        timeZone: 'America/New_York',
+      });
+
+      const parts = estFormatter.formatToParts(date);
+      const year = parseInt(parts.find(p => p.type === 'year').value);
+      const month = parseInt(parts.find(p => p.type === 'month').value) - 1;
+      const day = parseInt(parts.find(p => p.type === 'day').value);
+
+      let targetYear = year,
+        targetMonth = month,
+        targetDay = day;
+
+      if (interval === 'weekly') {
+        const tempDate = new Date(year, month, day);
+        const dayOfWeek = tempDate.getDay();
+        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        tempDate.setDate(day + mondayOffset);
+
+        targetYear = tempDate.getFullYear();
+        targetMonth = tempDate.getMonth();
+        targetDay = tempDate.getDate();
+      } else if (interval === 'monthly') {
+        targetDay = 1;
+      }
+
+      const midnightEST = new Date(targetYear, targetMonth, targetDay, 0, 0, 0);
+
+      const utcOffset = midnightEST.getTimezoneOffset() * 60000;
+      const estOffset = getESTOffset(midnightEST);
+      normalizedDate = new Date(midnightEST.getTime() - utcOffset + estOffset);
+    } else {
+      switch (interval) {
+        case 'hourly':
+          normalizedDate = new Date(date);
+          normalizedDate.setUTCMinutes(0, 0, 0);
+          break;
+        case 'daily':
+          normalizedDate = new Date(date);
+          normalizedDate.setUTCHours(0, 0, 0, 0);
+          break;
+        case 'weekly':
+          normalizedDate = getWeekStartDate(date);
+          break;
+        case 'monthly':
+          normalizedDate = new Date(
+            Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1)
+          );
+          break;
+        default:
+          normalizedDate = date;
+      }
+    }
+
+    return {
+      ...entry,
+      [dateField]: normalizedDate.toISOString(),
+    };
+  });
+
+  return result.sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
+}
+
+function groupByHour(data, dateField) {
+  return groupByPeriod(data, 'hourly', dateField);
+}
+
+function groupByDay(data, dateField) {
+  return groupByPeriod(data, 'daily', dateField);
+}
+
+function groupByWeek(data, dateField) {
+  return groupByPeriod(data, 'weekly', dateField);
+}
+
+function groupByMonth(data, dateField) {
+  return groupByPeriod(data, 'monthly', dateField);
+}
+
+function calculateGrowthRate(data, interval) {
+  if (data.length < 2) return data;
+
+  return data.map((current, index) => {
+    let growthRate = '';
+
+    if (
+      index > 0 &&
+      current.previous_sub_count &&
+      data[index - 1].previous_sub_count
+    ) {
+      const currentSubs = parseInt(current.previous_sub_count);
+      const prevSubs = parseInt(data[index - 1].previous_sub_count);
+      const diff = currentSubs - prevSubs;
+      growthRate = diff.toString();
+    }
+
+    return {
+      ...current,
+      growth_rate: growthRate,
+    };
+  });
+}
+
 function generateCSVContent() {
   if (currentChannelData.length === 0) {
     return '';
@@ -1053,36 +1094,37 @@ function generateCSVContent() {
   let dataToUse;
 
   if (selectedDataType === 'all') {
-    dataToUse = allChannelData;
+    dataToUse = [...allChannelData];
   } else {
-    dataToUse = defaultChannelData;
+    dataToUse = [...defaultChannelData];
   }
 
-  if (selectedDataType === 'interpolated') {
-    dataToUse = interpolateHourlyData(dataToUse);
-  }
-
-  let filteredData = [];
+  let processedData = [];
 
   switch (selectedInterval) {
     case 'all':
+      if (selectedDataType === 'interpolated') {
+        processedData = interpolateHourlyData(dataToUse);
+      } else {
+        processedData = dataToUse;
+      }
+
       if (selectedColumnsType === 'all') {
         csvContent = 'Time,Subscribers,Average Daily Subs\n';
       } else {
         csvContent = 'Time,Subscribers\n';
       }
 
-      filteredData = [...dataToUse];
-      filteredData.forEach(function (row) {
+      processedData.forEach(row => {
         const formattedDateTime = formatExportDate(
           row.last_updated,
-          'all',
+          selectedDataType === 'interpolated' ? 'interpolated' : 'all',
           selectedTimezone
         );
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
-            ? parseInt(row.average_per_day).toFixed(0)
+            ? parseInt(row.average_per_day).toString()
             : '';
           csvContent += `${formattedDateTime},${
             row.previous_sub_count || ''
@@ -1096,23 +1138,21 @@ function generateCSVContent() {
       break;
 
     case 'hourly':
+      if (selectedDataType === 'interpolated') {
+        const interpolatedData = interpolateHourlyData(dataToUse);
+        processedData = groupByHour(interpolatedData, 'last_updated');
+      } else {
+        processedData = groupByHour(dataToUse, 'last_updated');
+      }
+
       if (selectedColumnsType === 'all') {
+        processedData = calculateGrowthRate(processedData, 'hourly');
         csvContent = 'Hour,Subscribers,Average Daily Subs,Hourly Change\n';
       } else {
         csvContent = 'Hour,Subscribers\n';
       }
 
-      if (selectedDataType === 'interpolated') {
-        filteredData = dataToUse;
-      } else {
-        filteredData = groupByHour(dataToUse, 'last_updated');
-      }
-
-      if (selectedColumnsType === 'all') {
-        filteredData = calculateGrowthRate(filteredData, 'hourly');
-      }
-
-      filteredData.forEach(function (row) {
+      processedData.forEach(row => {
         const dateStr = formatExportDate(
           row.last_updated,
           'hourly',
@@ -1121,7 +1161,7 @@ function generateCSVContent() {
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
-            ? parseInt(row.average_per_day).toFixed(0)
+            ? parseInt(row.average_per_day).toString()
             : '';
           csvContent += `${dateStr},${
             row.previous_sub_count || ''
@@ -1133,19 +1173,21 @@ function generateCSVContent() {
       break;
 
     case 'daily':
+      if (selectedDataType === 'interpolated') {
+        const interpolatedData = interpolateHourlyData(dataToUse);
+        processedData = groupByDay(interpolatedData, 'last_updated');
+      } else {
+        processedData = groupByDay(dataToUse, 'last_updated');
+      }
+
       if (selectedColumnsType === 'all') {
+        processedData = calculateGrowthRate(processedData, 'daily');
         csvContent = 'Date,Subscribers,Average Daily Subs,Daily Growth\n';
       } else {
         csvContent = 'Date,Subscribers\n';
       }
 
-      filteredData = groupByDay(dataToUse, 'last_updated');
-
-      if (selectedColumnsType === 'all') {
-        filteredData = calculateGrowthRate(filteredData, 'daily');
-      }
-
-      filteredData.forEach(function (row) {
+      processedData.forEach(row => {
         const dateStr = formatExportDate(
           row.last_updated,
           'daily',
@@ -1154,7 +1196,7 @@ function generateCSVContent() {
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
-            ? parseInt(row.average_per_day).toFixed(0)
+            ? parseInt(row.average_per_day).toString()
             : '';
           csvContent += `${dateStr},${
             row.previous_sub_count || ''
@@ -1166,20 +1208,22 @@ function generateCSVContent() {
       break;
 
     case 'weekly':
+      if (selectedDataType === 'interpolated') {
+        const interpolatedData = interpolateHourlyData(dataToUse);
+        processedData = groupByWeek(interpolatedData, 'last_updated');
+      } else {
+        processedData = groupByWeek(dataToUse, 'last_updated');
+      }
+
       if (selectedColumnsType === 'all') {
+        processedData = calculateGrowthRate(processedData, 'weekly');
         csvContent =
           'Week Starting,Subscribers,Average Daily Subs,Weekly Growth\n';
       } else {
         csvContent = 'Week Starting,Subscribers\n';
       }
 
-      filteredData = groupByWeek(dataToUse, 'last_updated');
-
-      if (selectedColumnsType === 'all') {
-        filteredData = calculateGrowthRate(filteredData, 'weekly');
-      }
-
-      filteredData.forEach(function (row) {
+      processedData.forEach(row => {
         const dateStr = formatExportDate(
           row.last_updated,
           'weekly',
@@ -1188,7 +1232,7 @@ function generateCSVContent() {
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
-            ? parseInt(row.average_per_day).toFixed(0)
+            ? parseInt(row.average_per_day).toString()
             : '';
           csvContent += `${dateStr},${
             row.previous_sub_count || ''
@@ -1200,19 +1244,21 @@ function generateCSVContent() {
       break;
 
     case 'monthly':
+      if (selectedDataType === 'interpolated') {
+        const interpolatedData = interpolateHourlyData(dataToUse);
+        processedData = groupByMonth(interpolatedData, 'last_updated');
+      } else {
+        processedData = groupByMonth(dataToUse, 'last_updated');
+      }
+
       if (selectedColumnsType === 'all') {
+        processedData = calculateGrowthRate(processedData, 'monthly');
         csvContent = 'Month,Subscribers,Average Daily Subs,Monthly Growth\n';
       } else {
         csvContent = 'Month,Subscribers\n';
       }
 
-      filteredData = groupByMonth(dataToUse, 'last_updated');
-
-      if (selectedColumnsType === 'all') {
-        filteredData = calculateGrowthRate(filteredData, 'monthly');
-      }
-
-      filteredData.forEach(function (row) {
+      processedData.forEach(row => {
         const dateStr = formatExportDate(
           row.last_updated,
           'monthly',
@@ -1221,7 +1267,7 @@ function generateCSVContent() {
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
-            ? parseInt(row.average_per_day).toFixed(0)
+            ? parseInt(row.average_per_day).toString()
             : '';
           csvContent += `${dateStr},${
             row.previous_sub_count || ''
@@ -1242,11 +1288,21 @@ function exportToCSV() {
     return;
   }
 
-  let csvContent = 'data:text/csv;charset=utf-8,' + generateCSVContent();
-  var encodedUri = encodeURI(csvContent);
-  var link = document.createElement('a');
+  const csvContent = 'data:text/csv;charset=utf-8,' + generateCSVContent();
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement('a');
   link.setAttribute('href', encodedUri);
-  link.setAttribute('download', `${currentChannelName}_subscribers.csv`);
+
+  const intervalSuffix = selectedInterval === 'all' ? 'all' : selectedInterval;
+  const dataTypeSuffix =
+    selectedDataType === 'interpolated' ? '_interpolated' : '';
+  const timezoneSuffix =
+    selectedTimezone === 'America/New_York' ? '_EST' : '_UTC';
+
+  link.setAttribute(
+    'download',
+    `${currentChannelName}_${intervalSuffix}${dataTypeSuffix}${timezoneSuffix}.csv`
+  );
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -1270,7 +1326,19 @@ function copyToClipboard() {
     },
     function (err) {
       console.error('Could not copy text: ', err);
-      alert('Failed to copy to clipboard. Please try again.');
+      const textArea = document.createElement('textarea');
+      textArea.value = csvContent;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('CSV data copied to clipboard!');
+        closeExportModal();
+      } catch (err) {
+        alert('Failed to copy to clipboard. Please try again.');
+      }
+      document.body.removeChild(textArea);
     }
   );
 }
@@ -1297,7 +1365,7 @@ function showToast(message) {
 
 function syncDataTypeWithCurrentView() {
   const newDataType = isShowingAll ? 'all' : 'default';
-  if (selectedDataType !== newDataType) {
+  if (selectedDataType !== newDataType && selectedDataType !== 'interpolated') {
     selectedDataType = newDataType;
 
     const modal = document.getElementById('exportModal');
