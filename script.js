@@ -861,26 +861,76 @@ function getESTOffset(date) {
   return utcDate.getTime() - localDate.getTime();
 }
 
-function getPeriodKey(date, interval) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hour = String(date.getHours()).padStart(2, '0');
+function getPeriodKey(date, interval, timezone) {
+  let targetDate;
 
-  switch (interval) {
-    case 'hourly':
-      return `${year}-${month}-${day} ${hour}`;
-    case 'daily':
-      return `${year}-${month}-${day}`;
-    case 'weekly':
-      const weekStart = getWeekStartDateLocal(date);
-      return `${weekStart.getFullYear()}-${String(
-        weekStart.getMonth() + 1
-      ).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-    case 'monthly':
-      return `${year}-${month}`;
-    default:
-      return date.toISOString();
+  if (timezone === 'America/New_York') {
+    const estFormatter = new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+      timeZone: 'America/New_York',
+    });
+
+    const parts = estFormatter.formatToParts(date);
+    const year = parseInt(parts.find(p => p.type === 'year').value);
+    const month = parseInt(parts.find(p => p.type === 'month').value) - 1;
+    const day = parseInt(parts.find(p => p.type === 'day').value);
+    const hour = parseInt(parts.find(p => p.type === 'hour').value);
+    const minute = parseInt(parts.find(p => p.type === 'minute').value);
+    const second = parseInt(parts.find(p => p.type === 'second').value);
+
+    targetDate = new Date(year, month, day, hour, minute, second);
+  } else {
+    targetDate = date;
+  }
+
+  if (timezone === 'America/New_York') {
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    const hour = String(targetDate.getHours()).padStart(2, '0');
+
+    switch (interval) {
+      case 'hourly':
+        return `${year}-${month}-${day} ${hour}`;
+      case 'daily':
+        return `${year}-${month}-${day}`;
+      case 'weekly':
+        const weekStart = getWeekStartDateLocal(targetDate);
+        return `${weekStart.getFullYear()}-${String(
+          weekStart.getMonth() + 1
+        ).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
+      case 'monthly':
+        return `${year}-${month}`;
+      default:
+        return targetDate.toISOString();
+    }
+  } else {
+    const year = targetDate.getUTCFullYear();
+    const month = String(targetDate.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getUTCDate()).padStart(2, '0');
+    const hour = String(targetDate.getUTCHours()).padStart(2, '0');
+
+    switch (interval) {
+      case 'hourly':
+        return `${year}-${month}-${day} ${hour}`;
+      case 'daily':
+        return `${year}-${month}-${day}`;
+      case 'weekly':
+        const weekStart = getWeekStartDate(targetDate);
+        return `${weekStart.getUTCFullYear()}-${String(
+          weekStart.getUTCMonth() + 1
+        ).padStart(2, '0')}-${String(weekStart.getUTCDate()).padStart(2, '0')}`;
+      case 'monthly':
+        return `${year}-${month}`;
+      default:
+        return targetDate.toISOString();
+    }
   }
 }
 
@@ -910,51 +960,30 @@ function groupByPeriod(data, interval, dateField) {
   );
 
   const isEST = selectedTimezone === 'America/New_York';
-
   const grouped = new Map();
 
   sorted.forEach(entry => {
     const utcDate = new Date(entry[dateField]);
+    const periodKey = getPeriodKey(utcDate, interval, selectedTimezone);
 
-    let targetDate;
-    if (isEST) {
-      const estFormatter = new Intl.DateTimeFormat('en-CA', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-        timeZone: 'America/New_York',
-      });
-
-      const parts = estFormatter.formatToParts(utcDate);
-      const year = parseInt(parts.find(p => p.type === 'year').value);
-      const month = parseInt(parts.find(p => p.type === 'month').value) - 1;
-      const day = parseInt(parts.find(p => p.type === 'day').value);
-      const hour = parseInt(parts.find(p => p.type === 'hour').value);
-      const minute = parseInt(parts.find(p => p.type === 'minute').value);
-      const second = parseInt(parts.find(p => p.type === 'second').value);
-
-      targetDate = new Date(year, month, day, hour, minute, second);
-    } else {
-      targetDate = new Date(utcDate);
-    }
-
-    const periodKey = getPeriodKey(targetDate, interval);
-
-    if (isEST && interval !== 'hourly') {
+    if (interval !== 'hourly') {
       const existingEntry = grouped.get(periodKey);
 
       if (!existingEntry) {
         grouped.set(periodKey, entry);
       } else {
-        const currentEntryEST = getESTHour(new Date(entry[dateField]));
-        const existingEntryEST = getESTHour(new Date(existingEntry[dateField]));
+        let currentHour, existingHour;
 
-        const currentDistance = Math.abs(currentEntryEST);
-        const existingDistance = Math.abs(existingEntryEST);
+        if (isEST) {
+          currentHour = getESTHour(new Date(entry[dateField]));
+          existingHour = getESTHour(new Date(existingEntry[dateField]));
+        } else {
+          currentHour = new Date(entry[dateField]).getUTCHours();
+          existingHour = new Date(existingEntry[dateField]).getUTCHours();
+        }
+
+        const currentDistance = Math.abs(currentHour);
+        const existingDistance = Math.abs(existingHour);
 
         if (currentDistance < existingDistance) {
           grouped.set(periodKey, entry);
@@ -1009,7 +1038,6 @@ function groupByPeriod(data, interval, dateField) {
       }
 
       const midnightEST = new Date(targetYear, targetMonth, targetDay, 0, 0, 0);
-
       const utcOffset = midnightEST.getTimezoneOffset() * 60000;
       const estOffset = getESTOffset(midnightEST);
       normalizedDate = new Date(midnightEST.getTime() - utcOffset + estOffset);
@@ -1020,8 +1048,17 @@ function groupByPeriod(data, interval, dateField) {
           normalizedDate.setUTCMinutes(0, 0, 0);
           break;
         case 'daily':
-          normalizedDate = new Date(date);
-          normalizedDate.setUTCHours(0, 0, 0, 0);
+          normalizedDate = new Date(
+            Date.UTC(
+              date.getUTCFullYear(),
+              date.getUTCMonth(),
+              date.getUTCDate(),
+              0,
+              0,
+              0,
+              0
+            )
+          );
           break;
         case 'weekly':
           normalizedDate = getWeekStartDate(date);
