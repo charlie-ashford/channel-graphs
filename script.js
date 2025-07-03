@@ -657,6 +657,93 @@ function handleDataTypeSelection() {
   this.style.backgroundColor = channelColor;
 }
 
+function linearInterpolate(x0, y0, x1, y1, x) {
+  if (x1 === x0) return y0;
+  return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0);
+}
+
+function interpolateHourlyData(data) {
+  if (data.length < 2) return data;
+
+  data.sort((a, b) => new Date(a.last_updated) - new Date(b.last_updated));
+
+  const start = new Date(data[0].last_updated);
+  start.setUTCMinutes(0, 0, 0);
+  if (start < new Date(data[0].last_updated)) {
+    start.setUTCHours(start.getUTCHours() + 1);
+  }
+
+  const end = new Date(data[data.length - 1].last_updated);
+  end.setUTCMinutes(0, 0, 0);
+
+  const hourly = [];
+  let i = 0;
+
+  for (
+    let t = new Date(start);
+    t <= end;
+    t = new Date(t.setUTCHours(t.getUTCHours() + 1))
+  ) {
+    const tMillis = t.getTime();
+
+    while (
+      i < data.length - 1 &&
+      new Date(data[i + 1].last_updated).getTime() < tMillis
+    ) {
+      i++;
+    }
+
+    const t0 = new Date(data[i].last_updated).getTime();
+    const v0 = parseInt(data[i].previous_sub_count);
+
+    let t1, v1;
+    if (i + 1 < data.length) {
+      t1 = new Date(data[i + 1].last_updated).getTime();
+      v1 = parseInt(data[i + 1].previous_sub_count);
+    } else {
+      t1 = t0;
+      v1 = v0;
+    }
+
+    let value;
+    if (tMillis <= t0) {
+      value = v0;
+    } else if (tMillis >= t1) {
+      value = v1;
+    } else {
+      value = Math.round(linearInterpolate(t0, v0, t1, v1, tMillis));
+    }
+
+    let avgValue;
+    if (data[i].average_per_day && data[i + 1]?.average_per_day) {
+      const avg0 = parseInt(data[i].average_per_day);
+      const avg1 = parseInt(data[i + 1].average_per_day);
+
+      if (tMillis <= t0) {
+        avgValue = avg0;
+      } else if (tMillis >= t1) {
+        avgValue = avg1;
+      } else {
+        avgValue = Math.round(linearInterpolate(t0, avg0, t1, avg1, tMillis));
+      }
+    } else {
+      avgValue = data[i].average_per_day
+        ? parseInt(data[i].average_per_day)
+        : null;
+    }
+
+    const formattedTime = t.toISOString().replace(/\.\d+Z$/, '.000Z');
+
+    hourly.push({
+      last_updated: formattedTime,
+      previous_sub_count: value.toString(),
+      average_per_day: avgValue ? avgValue.toString() : null,
+    });
+  }
+
+  return hourly;
+}
+
 function fillMissingPeriods(data, interval, dateField) {
   if (data.length < 2) return data;
 
@@ -669,7 +756,9 @@ function fillMissingPeriods(data, interval, dateField) {
   const endDate = new Date(sorted[sorted.length - 1][dateField]);
   let currentDate = new Date(startDate);
 
-  if (interval === 'daily') {
+  if (interval === 'hourly') {
+    currentDate.setUTCMinutes(0, 0, 0);
+  } else if (interval === 'daily') {
     currentDate.setUTCHours(0, 0, 0, 0);
   } else if (interval === 'weekly') {
     currentDate = getWeekStartDate(currentDate);
@@ -696,7 +785,9 @@ function fillMissingPeriods(data, interval, dateField) {
       result.push(newEntry);
     }
 
-    if (interval === 'daily') {
+    if (interval === 'hourly') {
+      currentDate.setUTCHours(currentDate.getUTCHours() + 1);
+    } else if (interval === 'daily') {
       currentDate.setUTCDate(currentDate.getUTCDate() + 1);
     } else if (interval === 'weekly') {
       currentDate.setUTCDate(currentDate.getUTCDate() + 7);
@@ -709,7 +800,14 @@ function fillMissingPeriods(data, interval, dateField) {
 }
 
 function getPeriodKey(date, interval) {
-  if (interval === 'daily') {
+  if (interval === 'hourly') {
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
+      2,
+      '0'
+    )}-${String(date.getUTCDate()).padStart(2, '0')} ${String(
+      date.getUTCHours()
+    ).padStart(2, '0')}`;
+  } else if (interval === 'daily') {
     return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(
       2,
       '0'
@@ -724,6 +822,34 @@ function getPeriodKey(date, interval) {
     )}`;
   }
   return '';
+}
+
+function groupByHour(data, dateField) {
+  const sorted = data
+    .slice()
+    .sort((a, b) => new Date(a[dateField]) - new Date(b[dateField]));
+  const hourMap = new Map();
+
+  sorted.forEach(entry => {
+    const d = new Date(entry[dateField]);
+    d.setUTCMinutes(0, 0, 0);
+    const hourKey = `${d.getUTCFullYear()}-${String(
+      d.getUTCMonth() + 1
+    ).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(
+      d.getUTCHours()
+    ).padStart(2, '0')}`;
+
+    hourMap.set(hourKey, {
+      ...entry,
+      [dateField]: d.toISOString(),
+    });
+  });
+
+  const result = Array.from(hourMap.values()).sort(
+    (a, b) => new Date(a[dateField]) - new Date(b[dateField])
+  );
+
+  return fillMissingPeriods(result, 'hourly', dateField);
 }
 
 function groupByDay(data, dateField) {
@@ -822,6 +948,7 @@ function calculateGrowthRate(data, interval) {
 
       let timeDiff;
       if (
+        interval === 'hourly' ||
         interval === 'daily' ||
         interval === 'weekly' ||
         interval === 'monthly'
@@ -846,8 +973,18 @@ function generateCSVContent() {
   }
 
   let csvContent = '';
-  let dataToUse =
-    selectedDataType === 'all' ? allChannelData : defaultChannelData;
+  let dataToUse;
+
+  if (selectedDataType === 'all') {
+    dataToUse = allChannelData;
+  } else {
+    dataToUse = defaultChannelData;
+  }
+
+  if (selectedDataType === 'interpolated') {
+    dataToUse = interpolateHourlyData(dataToUse);
+  }
+
   let filteredData = [];
 
   switch (selectedInterval) {
@@ -875,9 +1012,12 @@ function generateCSVContent() {
           ('0' + dateTime.getUTCSeconds()).slice(-2);
 
         if (selectedColumnsType === 'all') {
-          csvContent += `${formattedDateTime},${row.previous_sub_count || ''},${
-            row.average_per_day || ''
-          }\n`;
+          const avgValue = row.average_per_day
+            ? parseInt(row.average_per_day).toFixed(0)
+            : '';
+          csvContent += `${formattedDateTime},${
+            row.previous_sub_count || ''
+          },${avgValue}\n`;
         } else {
           csvContent += `${formattedDateTime},${
             row.previous_sub_count || ''
@@ -886,60 +1026,133 @@ function generateCSVContent() {
       });
       break;
 
-    case 'daily':
-    case 'weekly':
-    case 'monthly':
+    case 'hourly':
       if (selectedColumnsType === 'all') {
-        if (selectedInterval === 'daily') {
-          csvContent = 'Date,Subscribers,Average Daily Subs,Growth\n';
-        } else if (selectedInterval === 'weekly') {
-          csvContent = 'Week,Subscribers,Average Daily Subs,Weekly Growth\n';
-        } else {
-          csvContent = 'Month,Subscribers,Average Daily Subs,Monthly Growth\n';
-        }
+        csvContent = 'Hour,Subscribers,Average Daily Subs,Hourly Change\n';
       } else {
-        if (selectedInterval === 'daily') {
-          csvContent = 'Date,Subscribers\n';
-        } else if (selectedInterval === 'weekly') {
-          csvContent = 'Week Starting,Subscribers\n';
-        } else {
-          csvContent = 'Month,Subscribers\n';
-        }
+        csvContent = 'Hour,Subscribers\n';
       }
 
-      if (selectedInterval === 'daily') {
-        filteredData = groupByDay(dataToUse, 'last_updated');
-      } else if (selectedInterval === 'weekly') {
-        filteredData = groupByWeek(dataToUse, 'last_updated');
+      if (selectedDataType === 'interpolated') {
+        filteredData = dataToUse;
       } else {
-        filteredData = groupByMonth(dataToUse, 'last_updated');
+        filteredData = groupByHour(dataToUse, 'last_updated');
       }
 
       if (selectedColumnsType === 'all') {
-        filteredData = calculateGrowthRate(filteredData, selectedInterval);
+        filteredData = calculateGrowthRate(filteredData, 'hourly');
       }
 
       filteredData.forEach(function (row) {
-        let dateStr = '';
-
-        if (selectedInterval === 'daily') {
-          const date = new Date(row.last_updated);
-          dateStr = `${date.getUTCFullYear()}-${String(
-            date.getUTCMonth() + 1
-          ).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
-        } else if (selectedInterval === 'weekly') {
-          dateStr = new Date(row.last_updated).toISOString().split('T')[0];
-        } else {
-          const date = new Date(row.last_updated);
-          dateStr = `${date.getUTCFullYear()}-${String(
-            date.getUTCMonth() + 1
-          ).padStart(2, '0')}`;
-        }
+        const date = new Date(row.last_updated);
+        const dateStr = `${date.getUTCFullYear()}-${String(
+          date.getUTCMonth() + 1
+        ).padStart(2, '0')}-${String(date.getUTCDate()).padStart(
+          2,
+          '0'
+        )} ${String(date.getUTCHours()).padStart(2, '0')}:00:00`;
 
         if (selectedColumnsType === 'all') {
-          csvContent += `${dateStr},${row.previous_sub_count || ''},${
-            row.average_per_day || ''
-          },${row.growth_rate || ''}\n`;
+          const avgValue = row.average_per_day
+            ? parseInt(row.average_per_day).toFixed(0)
+            : '';
+          csvContent += `${dateStr},${
+            row.previous_sub_count || ''
+          },${avgValue},${row.growth_rate || ''}\n`;
+        } else {
+          csvContent += `${dateStr},${row.previous_sub_count || ''}\n`;
+        }
+      });
+      break;
+
+    case 'daily':
+      if (selectedColumnsType === 'all') {
+        csvContent = 'Date,Subscribers,Average Daily Subs,Daily Growth\n';
+      } else {
+        csvContent = 'Date,Subscribers\n';
+      }
+
+      filteredData = groupByDay(dataToUse, 'last_updated');
+
+      if (selectedColumnsType === 'all') {
+        filteredData = calculateGrowthRate(filteredData, 'daily');
+      }
+
+      filteredData.forEach(function (row) {
+        const date = new Date(row.last_updated);
+        const dateStr = `${date.getUTCFullYear()}-${String(
+          date.getUTCMonth() + 1
+        ).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+
+        if (selectedColumnsType === 'all') {
+          const avgValue = row.average_per_day
+            ? parseInt(row.average_per_day).toFixed(0)
+            : '';
+          csvContent += `${dateStr},${
+            row.previous_sub_count || ''
+          },${avgValue},${row.growth_rate || ''}\n`;
+        } else {
+          csvContent += `${dateStr},${row.previous_sub_count || ''}\n`;
+        }
+      });
+      break;
+
+    case 'weekly':
+      if (selectedColumnsType === 'all') {
+        csvContent =
+          'Week Starting,Subscribers,Average Daily Subs,Weekly Growth\n';
+      } else {
+        csvContent = 'Week Starting,Subscribers\n';
+      }
+
+      filteredData = groupByWeek(dataToUse, 'last_updated');
+
+      if (selectedColumnsType === 'all') {
+        filteredData = calculateGrowthRate(filteredData, 'weekly');
+      }
+
+      filteredData.forEach(function (row) {
+        const dateStr = new Date(row.last_updated).toISOString().split('T')[0];
+
+        if (selectedColumnsType === 'all') {
+          const avgValue = row.average_per_day
+            ? parseInt(row.average_per_day).toFixed(0)
+            : '';
+          csvContent += `${dateStr},${
+            row.previous_sub_count || ''
+          },${avgValue},${row.growth_rate || ''}\n`;
+        } else {
+          csvContent += `${dateStr},${row.previous_sub_count || ''}\n`;
+        }
+      });
+      break;
+
+    case 'monthly':
+      if (selectedColumnsType === 'all') {
+        csvContent = 'Month,Subscribers,Average Daily Subs,Monthly Growth\n';
+      } else {
+        csvContent = 'Month,Subscribers\n';
+      }
+
+      filteredData = groupByMonth(dataToUse, 'last_updated');
+
+      if (selectedColumnsType === 'all') {
+        filteredData = calculateGrowthRate(filteredData, 'monthly');
+      }
+
+      filteredData.forEach(function (row) {
+        const date = new Date(row.last_updated);
+        const dateStr = `${date.getUTCFullYear()}-${String(
+          date.getUTCMonth() + 1
+        ).padStart(2, '0')}`;
+
+        if (selectedColumnsType === 'all') {
+          const avgValue = row.average_per_day
+            ? parseInt(row.average_per_day).toFixed(0)
+            : '';
+          csvContent += `${dateStr},${
+            row.previous_sub_count || ''
+          },${avgValue},${row.growth_rate || ''}\n`;
         } else {
           csvContent += `${dateStr},${row.previous_sub_count || ''}\n`;
         }

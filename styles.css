@@ -482,7 +482,7 @@ button:hover,
 
 .interval-options {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 1rem;
 }
 
@@ -512,7 +512,7 @@ button:hover,
 
 .data-options {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
 }
 
@@ -754,6 +754,15 @@ button:hover,
     padding: 1.25rem;
     min-height: 220px;
   }
+
+  .interval-options {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+  }
+
+  .data-options {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 @media (max-width: 576px) {
@@ -853,8 +862,16 @@ button:hover,
     gap: 2rem;
   }
 
-  .interval-options,
-  .data-options,
+  .interval-options {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+  }
+
+  .data-options {
+    grid-template-columns: repeat(1, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+  }
+
   .columns-options {
     grid-template-columns: 1fr 1fr;
     grid-auto-rows: 1fr;
