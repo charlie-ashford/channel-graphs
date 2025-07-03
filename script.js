@@ -1230,8 +1230,6 @@ function generateCSVContent() {
       }
 
       if (selectedColumnsType === 'all') {
-        processedData = calculateGrowthRate(processedData, 'hourly');
-
         if (selectedDataType === 'interpolated') {
           processedData = processedData.map((current, index) => {
             let gain24h = '';
@@ -1254,9 +1252,9 @@ function generateCSVContent() {
             };
           });
 
-          csvContent =
-            'Hour,Subscribers,Average Daily Subs,Hourly Change,24h Gain\n';
+          csvContent = 'Hour,Subscribers,24h Gain\n';
         } else {
+          processedData = calculateGrowthRate(processedData, 'hourly');
           csvContent = 'Hour,Subscribers,Average Daily Subs,Hourly Change\n';
         }
       } else {
@@ -1271,15 +1269,14 @@ function generateCSVContent() {
         );
 
         if (selectedColumnsType === 'all') {
-          const avgValue = row.average_per_day
-            ? parseInt(row.average_per_day).toString()
-            : '';
-
           if (selectedDataType === 'interpolated') {
-            csvContent += `${dateStr},${
-              row.previous_sub_count || ''
-            },${avgValue},${row.growth_rate || ''},${row.gain_24h || ''}\n`;
+            csvContent += `${dateStr},${row.previous_sub_count || ''},${
+              row.gain_24h || ''
+            }\n`;
           } else {
+            const avgValue = row.average_per_day
+              ? parseInt(row.average_per_day).toString()
+              : '';
             csvContent += `${dateStr},${
               row.previous_sub_count || ''
             },${avgValue},${row.growth_rate || ''}\n`;
