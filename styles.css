@@ -60,7 +60,7 @@ body {
   box-shadow: var(--shadow);
   display: flex;
   align-items: center;
-  height: 80px; 
+  height: 80px;
 }
 
 #channelIdInput {
@@ -532,7 +532,7 @@ button:hover,
 }
 
 .timezone-options {
-  grid-template-columns: repeat(2, 1fr); 
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .export-actions {
