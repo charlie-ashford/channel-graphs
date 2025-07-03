@@ -1176,10 +1176,54 @@ function generateCSVContent() {
 
     case 'hourly':
       if (selectedDataType === 'interpolated') {
-        const interpolatedData = interpolateHourlyData(dataToUse);
-        processedData = groupByHour(interpolatedData, 'last_updated');
+        processedData = interpolateHourlyData(dataToUse);
+        processedData = groupByHour(processedData, 'last_updated');
       } else {
-        processedData = groupByHour(dataToUse, 'last_updated');
+        const sortedData = [...dataToUse].sort(
+          (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
+        );
+        
+        if (sortedData.length > 0) {
+          const startTime = new Date(sortedData[0].last_updated);
+          const endTime = new Date(sortedData[sortedData.length - 1].last_updated);
+          
+          const start = new Date(startTime);
+          start.setUTCMinutes(0, 0, 0);
+          if (start <= startTime) {
+            start.setUTCHours(start.getUTCHours() + 1);
+          }
+          
+          const end = new Date(endTime);
+          end.setUTCMinutes(0, 0, 0);
+          
+          const filledData = [];
+          let dataIndex = 0;
+          
+          for (
+            let currentTime = new Date(start);
+            currentTime <= end;
+            currentTime.setUTCHours(currentTime.getUTCHours() + 1)
+          ) {
+            const targetTime = currentTime.getTime();
+            
+            while (
+              dataIndex < sortedData.length - 1 &&
+              new Date(sortedData[dataIndex + 1].last_updated).getTime() <= targetTime
+            ) {
+              dataIndex++;
+            }
+            
+            const mostRecentPoint = sortedData[dataIndex];
+            
+            filledData.push({
+              last_updated: new Date(currentTime).toISOString(),
+              previous_sub_count: mostRecentPoint.previous_sub_count,
+              average_per_day: mostRecentPoint.average_per_day,
+            });
+          }
+          
+          processedData = filledData;
+        }
       }
 
       if (selectedColumnsType === 'all') {
@@ -1214,7 +1258,45 @@ function generateCSVContent() {
         const interpolatedData = interpolateHourlyData(dataToUse);
         processedData = groupByDay(interpolatedData, 'last_updated');
       } else {
-        processedData = groupByDay(dataToUse, 'last_updated');
+        const sortedData = [...dataToUse].sort(
+          (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
+        );
+        
+        if (sortedData.length > 0) {
+          const startDate = new Date(sortedData[0].last_updated);
+          const endDate = new Date(sortedData[sortedData.length - 1].last_updated);
+          
+          const start = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
+          const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
+          
+          const filledData = [];
+          let dataIndex = 0;
+          
+          for (
+            let currentDate = new Date(start);
+            currentDate <= end;
+            currentDate.setUTCDate(currentDate.getUTCDate() + 1)
+          ) {
+            const targetTime = currentDate.getTime();
+            
+            while (
+              dataIndex < sortedData.length - 1 &&
+              new Date(sortedData[dataIndex + 1].last_updated).getTime() <= targetTime + 24 * 60 * 60 * 1000
+            ) {
+              dataIndex++;
+            }
+            
+            const mostRecentPoint = sortedData[dataIndex];
+            
+            filledData.push({
+              last_updated: new Date(currentDate).toISOString(),
+              previous_sub_count: mostRecentPoint.previous_sub_count,
+              average_per_day: mostRecentPoint.average_per_day,
+            });
+          }
+          
+          processedData = filledData;
+        }
       }
 
       if (selectedColumnsType === 'all') {
@@ -1249,7 +1331,46 @@ function generateCSVContent() {
         const interpolatedData = interpolateHourlyData(dataToUse);
         processedData = groupByWeek(interpolatedData, 'last_updated');
       } else {
-        processedData = groupByWeek(dataToUse, 'last_updated');
+        const sortedData = [...dataToUse].sort(
+          (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
+        );
+        
+        if (sortedData.length > 0) {
+          const startDate = new Date(sortedData[0].last_updated);
+          const endDate = new Date(sortedData[sortedData.length - 1].last_updated);
+          
+          const start = getWeekStartDate(startDate);
+          const end = getWeekStartDate(endDate);
+          
+          const filledData = [];
+          let dataIndex = 0;
+          
+          for (
+            let currentWeek = new Date(start);
+            currentWeek <= end;
+            currentWeek.setUTCDate(currentWeek.getUTCDate() + 7)
+          ) {
+            const weekEnd = new Date(currentWeek);
+            weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
+            
+            while (
+              dataIndex < sortedData.length - 1 &&
+              new Date(sortedData[dataIndex + 1].last_updated).getTime() <= weekEnd.getTime()
+            ) {
+              dataIndex++;
+            }
+            
+            const mostRecentPoint = sortedData[dataIndex];
+            
+            filledData.push({
+              last_updated: new Date(currentWeek).toISOString(),
+              previous_sub_count: mostRecentPoint.previous_sub_count,
+              average_per_day: mostRecentPoint.average_per_day,
+            });
+          }
+          
+          processedData = filledData;
+        }
       }
 
       if (selectedColumnsType === 'all') {
@@ -1285,7 +1406,46 @@ function generateCSVContent() {
         const interpolatedData = interpolateHourlyData(dataToUse);
         processedData = groupByMonth(interpolatedData, 'last_updated');
       } else {
-        processedData = groupByMonth(dataToUse, 'last_updated');
+        const sortedData = [...dataToUse].sort(
+          (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
+        );
+        
+        if (sortedData.length > 0) {
+          const startDate = new Date(sortedData[0].last_updated);
+          const endDate = new Date(sortedData[sortedData.length - 1].last_updated);
+          
+          const start = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
+          const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1));
+          
+          const filledData = [];
+          let dataIndex = 0;
+          
+          for (
+            let currentMonth = new Date(start);
+            currentMonth <= end;
+            currentMonth.setUTCMonth(currentMonth.getUTCMonth() + 1)
+          ) {
+            const monthEnd = new Date(currentMonth);
+            monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
+            
+            while (
+              dataIndex < sortedData.length - 1 &&
+              new Date(sortedData[dataIndex + 1].last_updated).getTime() <= monthEnd.getTime()
+            ) {
+              dataIndex++;
+            }
+            
+            const mostRecentPoint = sortedData[dataIndex];
+            
+            filledData.push({
+              last_updated: new Date(currentMonth).toISOString(),
+              previous_sub_count: mostRecentPoint.previous_sub_count,
+              average_per_day: mostRecentPoint.average_per_day,
+            });
+          }
+          
+          processedData = filledData;
+        }
       }
 
       if (selectedColumnsType === 'all') {
