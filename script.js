@@ -7,6 +7,7 @@ let isShowingAll = false;
 let selectedInterval = 'all';
 let selectedDataType = 'default';
 let selectedColumnsType = 'all';
+let selectedTimezone = 'UTC';
 
 document
   .getElementById('channelIdInput')
@@ -43,7 +44,6 @@ function initializeEventListeners() {
 
   document.querySelectorAll('.interval-option').forEach(button => {
     button.addEventListener('click', handleIntervalSelection);
-
     if (button.getAttribute('data-interval') === selectedInterval) {
       button.classList.add('active');
     }
@@ -51,7 +51,6 @@ function initializeEventListeners() {
 
   document.querySelectorAll('.columns-option').forEach(button => {
     button.addEventListener('click', handleColumnsSelection);
-
     if (button.getAttribute('data-columns-type') === selectedColumnsType) {
       button.classList.add('active');
     }
@@ -59,8 +58,14 @@ function initializeEventListeners() {
 
   document.querySelectorAll('.data-option').forEach(button => {
     button.addEventListener('click', handleDataTypeSelection);
-
     if (button.getAttribute('data-data-type') === selectedDataType) {
+      button.classList.add('active');
+    }
+  });
+
+  document.querySelectorAll('.timezone-option').forEach(button => {
+    button.addEventListener('click', handleTimezoneSelection);
+    if (button.getAttribute('data-timezone') === selectedTimezone) {
       button.classList.add('active');
     }
   });
@@ -289,7 +294,9 @@ function extractAndApplyChannelColors(profilePictureUrl) {
     updateSearchButtonColor(channelLinkColor);
 
     document
-      .querySelectorAll('.interval-option, .data-option')
+      .querySelectorAll(
+        '.interval-option, .data-option, .columns-option, .timezone-option'
+      )
       .forEach(option => {
         if (option.classList.contains('active')) {
           option.style.backgroundColor = channelLinkColor;
@@ -584,35 +591,31 @@ function openExportModal() {
     .getPropertyValue('--chart-color')
     .trim();
 
-  document.querySelectorAll('.interval-option').forEach(option => {
-    if (option.getAttribute('data-interval') === selectedInterval) {
-      option.classList.add('active');
-      option.style.backgroundColor = channelColor;
-    } else {
-      option.classList.remove('active');
-      option.style.backgroundColor = '';
-    }
-  });
+  document
+    .querySelectorAll(
+      '.interval-option, .data-option, .columns-option, .timezone-option'
+    )
+    .forEach(option => {
+      let isActive = false;
+      if (option.classList.contains('interval-option')) {
+        isActive = option.getAttribute('data-interval') === selectedInterval;
+      } else if (option.classList.contains('data-option')) {
+        isActive = option.getAttribute('data-data-type') === selectedDataType;
+      } else if (option.classList.contains('columns-option')) {
+        isActive =
+          option.getAttribute('data-columns-type') === selectedColumnsType;
+      } else if (option.classList.contains('timezone-option')) {
+        isActive = option.getAttribute('data-timezone') === selectedTimezone;
+      }
 
-  document.querySelectorAll('.data-option').forEach(option => {
-    if (option.getAttribute('data-data-type') === selectedDataType) {
-      option.classList.add('active');
-      option.style.backgroundColor = channelColor;
-    } else {
-      option.classList.remove('active');
-      option.style.backgroundColor = '';
-    }
-  });
-
-  document.querySelectorAll('.columns-option').forEach(option => {
-    if (option.getAttribute('data-columns-type') === selectedColumnsType) {
-      option.classList.add('active');
-      option.style.backgroundColor = channelColor;
-    } else {
-      option.classList.remove('active');
-      option.style.backgroundColor = '';
-    }
-  });
+      if (isActive) {
+        option.classList.add('active');
+        option.style.backgroundColor = channelColor;
+      } else {
+        option.classList.remove('active');
+        option.style.backgroundColor = '';
+      }
+    });
 
   document.querySelectorAll('.export-btn').forEach(btn => {
     btn.addEventListener('mouseover', function () {
@@ -653,6 +656,36 @@ function handleDataTypeSelection() {
 
   this.classList.add('active');
   selectedDataType = this.getAttribute('data-data-type');
+
+  const channelColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--chart-color')
+    .trim();
+  this.style.backgroundColor = channelColor;
+}
+
+function handleColumnsSelection() {
+  document.querySelectorAll('.columns-option').forEach(btn => {
+    btn.classList.remove('active');
+    btn.style.removeProperty('background-color');
+  });
+
+  this.classList.add('active');
+  selectedColumnsType = this.getAttribute('data-columns-type');
+
+  const channelColor = getComputedStyle(document.documentElement)
+    .getPropertyValue('--chart-color')
+    .trim();
+  this.style.backgroundColor = channelColor;
+}
+
+function handleTimezoneSelection() {
+  document.querySelectorAll('.timezone-option').forEach(btn => {
+    btn.classList.remove('active');
+    btn.style.removeProperty('background-color');
+  });
+
+  this.classList.add('active');
+  selectedTimezone = this.getAttribute('data-timezone');
 
   const channelColor = getComputedStyle(document.documentElement)
     .getPropertyValue('--chart-color')
@@ -760,7 +793,7 @@ function fillMissingPeriods(data, interval, dateField) {
   let currentDate = new Date(startDate);
 
   if (interval === 'hourly') {
-    currentDate.setUTCMinutes(0, 0, 0);
+    currentDate.setUTCMinutes(0, 0, 0, 0);
   } else if (interval === 'daily') {
     currentDate.setUTCHours(0, 0, 0, 0);
   } else if (interval === 'weekly') {
@@ -772,16 +805,25 @@ function fillMissingPeriods(data, interval, dateField) {
   }
 
   let lastEntry = null;
+  let dataIndex = 0;
 
   while (currentDate <= endDate) {
-    const periodKey = getPeriodKey(currentDate, interval);
-    const existingEntry = sorted.find(
-      entry => getPeriodKey(new Date(entry[dateField]), interval) === periodKey
-    );
+    const currentPeriodKey = getPeriodKey(currentDate, interval);
+    let foundEntry = null;
 
-    if (existingEntry) {
-      result.push(existingEntry);
-      lastEntry = existingEntry;
+    for (let i = dataIndex; i < sorted.length; i++) {
+      const entryDate = new Date(sorted[i][dateField]);
+      const entryPeriodKey = getPeriodKey(entryDate, interval);
+      if (entryPeriodKey === currentPeriodKey) {
+        foundEntry = sorted[i];
+      } else if (entryDate > currentDate) {
+        break;
+      }
+    }
+
+    if (foundEntry) {
+      result.push(foundEntry);
+      lastEntry = foundEntry;
     } else if (lastEntry) {
       const newEntry = { ...lastEntry };
       newEntry[dateField] = new Date(currentDate).toISOString();
@@ -835,7 +877,7 @@ function groupByHour(data, dateField) {
 
   sorted.forEach(entry => {
     const d = new Date(entry[dateField]);
-    d.setUTCMinutes(0, 0, 0);
+    d.setUTCMinutes(0, 0, 0, 0);
     const hourKey = `${d.getUTCFullYear()}-${String(
       d.getUTCMonth() + 1
     ).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')} ${String(
@@ -863,11 +905,15 @@ function groupByDay(data, dateField) {
 
   sorted.forEach(entry => {
     const d = new Date(entry[dateField]);
+    d.setUTCHours(0, 0, 0, 0);
     const dayKey = `${d.getUTCFullYear()}-${String(
       d.getUTCMonth() + 1
     ).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
 
-    dayMap.set(dayKey, entry);
+    dayMap.set(dayKey, {
+      ...entry,
+      [dateField]: d.toISOString(),
+    });
   });
 
   const result = Array.from(dayMap.values()).sort(
@@ -888,10 +934,7 @@ function groupByWeek(data, dateField) {
     const weekStart = getWeekStartDate(d);
     const weekKey = weekStart.toISOString().split('T')[0];
 
-    const newEntry = { ...entry };
-    newEntry[dateField] = weekStart.toISOString();
-
-    weekMap.set(weekKey, newEntry);
+    weekMap.set(weekKey, { ...entry, [dateField]: weekStart.toISOString() });
   });
 
   const result = Array.from(weekMap.values()).sort(
@@ -913,12 +956,11 @@ function groupByMonth(data, dateField) {
       d.getUTCMonth() + 1
     ).padStart(2, '0')}`;
 
-    const newEntry = { ...entry };
-    newEntry[dateField] = new Date(
+    const normalizedDate = new Date(
       Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)
     ).toISOString();
 
-    monthMap.set(monthKey, newEntry);
+    monthMap.set(monthKey, { ...entry, [dateField]: normalizedDate });
   });
 
   const result = Array.from(monthMap.values()).sort(
@@ -949,15 +991,7 @@ function calculateGrowthRate(data, interval) {
       const prevSubs = parseInt(data[i - 1].previous_sub_count);
       const diff = currentSubs - prevSubs;
 
-      let timeDiff;
-      if (
-        interval === 'hourly' ||
-        interval === 'daily' ||
-        interval === 'weekly' ||
-        interval === 'monthly'
-      ) {
-        timeDiff = 1;
-      }
+      let timeDiff = 1;
       growthRate = (diff / timeDiff).toFixed(0);
     }
 
@@ -968,6 +1002,46 @@ function calculateGrowthRate(data, interval) {
   }
 
   return result;
+}
+
+function formatExportDate(isoString, intervalType, timezone) {
+  const date = new Date(isoString);
+  const timeZone = timezone === 'EST' ? 'America/New_York' : 'UTC';
+
+  const options = {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: timeZone,
+  };
+
+  const formattedString = date.toLocaleString('en-US', options);
+
+  const [datePartRaw, timePartRaw] = formattedString.split(', ');
+  const [month, day, year] = datePartRaw.split('/');
+  const [hour, minute, second] = timePartRaw.split(':');
+
+  const yyyyMmDd = `${year}-${month}-${day}`;
+  const hhMmSs = `${hour}:${minute}:${second}`;
+
+  switch (intervalType) {
+    case 'all':
+    case 'interpolated':
+      return `${yyyyMmDd} ${hhMmSs}`;
+    case 'hourly':
+      return `${yyyyMmDd} ${hour}:00:00`;
+    case 'daily':
+    case 'weekly':
+      return yyyyMmDd;
+    case 'monthly':
+      return `${year}-${month}`;
+    default:
+      return isoString;
+  }
 }
 
 function generateCSVContent() {
@@ -1000,19 +1074,11 @@ function generateCSVContent() {
 
       filteredData = [...dataToUse];
       filteredData.forEach(function (row) {
-        let dateTime = new Date(row.last_updated);
-        let formattedDateTime =
-          dateTime.getUTCFullYear() +
-          '-' +
-          ('0' + (dateTime.getUTCMonth() + 1)).slice(-2) +
-          '-' +
-          ('0' + dateTime.getUTCDate()).slice(-2) +
-          ' ' +
-          ('0' + dateTime.getUTCHours()).slice(-2) +
-          ':' +
-          ('0' + dateTime.getUTCMinutes()).slice(-2) +
-          ':' +
-          ('0' + dateTime.getUTCSeconds()).slice(-2);
+        const formattedDateTime = formatExportDate(
+          row.last_updated,
+          'all',
+          selectedTimezone
+        );
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
@@ -1047,13 +1113,11 @@ function generateCSVContent() {
       }
 
       filteredData.forEach(function (row) {
-        const date = new Date(row.last_updated);
-        const dateStr = `${date.getUTCFullYear()}-${String(
-          date.getUTCMonth() + 1
-        ).padStart(2, '0')}-${String(date.getUTCDate()).padStart(
-          2,
-          '0'
-        )} ${String(date.getUTCHours()).padStart(2, '0')}:00:00`;
+        const dateStr = formatExportDate(
+          row.last_updated,
+          'hourly',
+          selectedTimezone
+        );
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
@@ -1082,10 +1146,11 @@ function generateCSVContent() {
       }
 
       filteredData.forEach(function (row) {
-        const date = new Date(row.last_updated);
-        const dateStr = `${date.getUTCFullYear()}-${String(
-          date.getUTCMonth() + 1
-        ).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+        const dateStr = formatExportDate(
+          row.last_updated,
+          'daily',
+          selectedTimezone
+        );
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
@@ -1115,7 +1180,11 @@ function generateCSVContent() {
       }
 
       filteredData.forEach(function (row) {
-        const dateStr = new Date(row.last_updated).toISOString().split('T')[0];
+        const dateStr = formatExportDate(
+          row.last_updated,
+          'weekly',
+          selectedTimezone
+        );
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
@@ -1144,10 +1213,11 @@ function generateCSVContent() {
       }
 
       filteredData.forEach(function (row) {
-        const date = new Date(row.last_updated);
-        const dateStr = `${date.getUTCFullYear()}-${String(
-          date.getUTCMonth() + 1
-        ).padStart(2, '0')}`;
+        const dateStr = formatExportDate(
+          row.last_updated,
+          'monthly',
+          selectedTimezone
+        );
 
         if (selectedColumnsType === 'all') {
           const avgValue = row.average_per_day
@@ -1164,21 +1234,6 @@ function generateCSVContent() {
   }
 
   return csvContent;
-}
-
-function handleColumnsSelection() {
-  document.querySelectorAll('.columns-option').forEach(btn => {
-    btn.classList.remove('active');
-    btn.style.removeProperty('background-color');
-  });
-
-  this.classList.add('active');
-  selectedColumnsType = this.getAttribute('data-columns-type');
-
-  const channelColor = getComputedStyle(document.documentElement)
-    .getPropertyValue('--chart-color')
-    .trim();
-  this.style.backgroundColor = channelColor;
 }
 
 function exportToCSV() {

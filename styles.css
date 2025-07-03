@@ -39,11 +39,9 @@ body {
 }
 
 .container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
-  transform: scale(0.85);
-  transform-origin: top center;
 }
 
 .top-bar {
@@ -62,7 +60,7 @@ body {
   box-shadow: var(--shadow);
   display: flex;
   align-items: center;
-  height: 80px; /* Increased height to match other buttons */
+  height: 80px; 
 }
 
 #channelIdInput {
@@ -480,13 +478,10 @@ button:hover,
   color: var(--chart-color);
 }
 
-.interval-options {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 1rem;
-}
-
-.interval-option {
+.interval-option,
+.data-option,
+.columns-option,
+.timezone-option {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
@@ -499,75 +494,45 @@ button:hover,
   font-weight: 500;
 }
 
-.interval-option.active {
+.interval-option.active,
+.data-option.active,
+.columns-option.active,
+.timezone-option.active {
   background: var(--chart-color);
   color: white;
   border-color: transparent;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
-.interval-option:hover:not(.active) {
+.interval-option:hover:not(.active),
+.data-option:hover:not(.active),
+.columns-option:hover:not(.active),
+.timezone-option:hover:not(.active) {
   background: color-mix(in srgb, var(--chart-color) 30%, transparent);
+}
+
+.interval-options,
+.data-options,
+.columns-options,
+.timezone-options {
+  display: grid;
+  gap: 1rem;
+}
+
+.interval-options {
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .data-options {
-  display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.data-option {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 1rem 0;
-  font-size: 1rem;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: var(--transition);
-  text-align: center;
-  font-weight: 500;
-}
-
-.data-option.active {
-  background: var(--chart-color);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.data-option:hover:not(.active) {
-  background: color-mix(in srgb, var(--chart-color) 30%, transparent);
 }
 
 .columns-options {
-  display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 1rem;
 }
 
-.columns-option {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 1rem 0;
-  font-size: 1rem;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: var(--transition);
-  text-align: center;
-  font-weight: 500;
-}
-
-.columns-option.active {
-  background: var(--chart-color);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.columns-option:hover:not(.active) {
-  background: color-mix(in srgb, var(--chart-color) 30%, transparent);
+.timezone-options {
+  grid-template-columns: repeat(2, 1fr); 
 }
 
 .export-actions {
@@ -675,13 +640,13 @@ button:hover,
 
 @media (max-width: 1200px) {
   .container {
-    transform: scale(0.95);
+    max-width: 1140px;
   }
 }
 
 @media (max-width: 992px) {
   .container {
-    transform: scale(1);
+    max-width: none;
     padding: 1.5rem;
   }
 
@@ -872,14 +837,16 @@ button:hover,
     grid-template-rows: repeat(3, 1fr);
   }
 
-  .columns-options {
+  .columns-options,
+  .timezone-options {
     grid-template-columns: 1fr 1fr;
     grid-auto-rows: 1fr;
   }
 
   .interval-option,
   .data-option,
-  .columns-option {
+  .columns-option,
+  .timezone-option {
     padding: 0.8rem 0;
     font-size: 0.9rem;
     border-radius: 10px;
@@ -930,7 +897,6 @@ button:hover,
   }
 
   #channelIdInput {
-    padding: 0.75rem 0.9rem;
     font-size: 0.85rem;
   }
 
@@ -975,7 +941,8 @@ button:hover,
 
   .interval-option,
   .data-option,
-  .columns-option {
+  .columns-option,
+  .timezone-option {
     padding: 0.7rem 0;
     font-size: 0.85rem;
     min-height: 38px;
@@ -1020,7 +987,8 @@ button:hover,
 
   .interval-options > *,
   .data-options > *,
-  .columns-options > * {
+  .columns-options > *,
+  .timezone-options > * {
     min-height: 36px;
   }
 
@@ -1081,7 +1049,8 @@ button:hover,
 
   .interval-options,
   .data-options,
-  .columns-options {
+  .columns-options,
+  .timezone-options {
     grid-auto-rows: 40px;
   }
 
