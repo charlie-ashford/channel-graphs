@@ -587,6 +587,8 @@ function openExportModal() {
   const modal = document.getElementById('exportModal');
   modal.style.display = 'block';
 
+  updateColumnsButtonText();
+
   const channelColor = getComputedStyle(document.documentElement)
     .getPropertyValue('--chart-color')
     .trim();
@@ -633,6 +635,21 @@ function closeExportModal() {
   document.getElementById('exportModal').style.display = 'none';
 }
 
+function updateColumnsButtonText() {
+  const columnsButtons = document.querySelectorAll('.columns-option');
+  const includeAllButton = Array.from(columnsButtons).find(
+    btn => btn.getAttribute('data-columns-type') === 'all'
+  );
+
+  if (includeAllButton) {
+    if (selectedInterval === 'hourly' && selectedDataType === 'interpolated') {
+      includeAllButton.textContent = 'Include 24h Gains Column';
+    } else {
+      includeAllButton.textContent = 'Include Average Columns';
+    }
+  }
+}
+
 function handleIntervalSelection() {
   document.querySelectorAll('.interval-option').forEach(btn => {
     btn.classList.remove('active');
@@ -646,6 +663,8 @@ function handleIntervalSelection() {
     .getPropertyValue('--chart-color')
     .trim();
   this.style.backgroundColor = channelColor;
+
+  updateColumnsButtonText();
 }
 
 function handleDataTypeSelection() {
@@ -661,6 +680,8 @@ function handleDataTypeSelection() {
     .getPropertyValue('--chart-color')
     .trim();
   this.style.backgroundColor = channelColor;
+
+  updateColumnsButtonText();
 }
 
 function handleColumnsSelection() {
