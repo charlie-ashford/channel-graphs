@@ -555,6 +555,7 @@ function toggleAllValues() {
       document.querySelector('.channel-avatar').src
     );
   }
+  syncDataTypeWithCurrentView();
 }
 
 function toggleTheme() {
@@ -572,7 +573,9 @@ function openExportModal() {
     return;
   }
 
-  selectedDataType = isShowingAll ? 'all' : 'default';
+  if (!selectedDataType || selectedDataType === 'default') {
+    selectedDataType = isShowingAll ? 'all' : 'default';
+  }
 
   const modal = document.getElementById('exportModal');
   modal.style.display = 'block';
@@ -1235,4 +1238,28 @@ function showToast(message) {
   setTimeout(() => {
     toast.classList.remove('show');
   }, 3000);
+}
+
+function syncDataTypeWithCurrentView() {
+  const newDataType = isShowingAll ? 'all' : 'default';
+  if (selectedDataType !== newDataType) {
+    selectedDataType = newDataType;
+
+    const modal = document.getElementById('exportModal');
+    if (modal && modal.style.display === 'block') {
+      const channelColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--chart-color')
+        .trim();
+
+      document.querySelectorAll('.data-option').forEach(option => {
+        if (option.getAttribute('data-data-type') === selectedDataType) {
+          option.classList.add('active');
+          option.style.backgroundColor = channelColor;
+        } else {
+          option.classList.remove('active');
+          option.style.backgroundColor = '';
+        }
+      });
+    }
+  }
 }
