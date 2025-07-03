@@ -1182,53 +1182,83 @@ function generateCSVContent() {
         const sortedData = [...dataToUse].sort(
           (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
         );
-        
+
         if (sortedData.length > 0) {
           const startTime = new Date(sortedData[0].last_updated);
-          const endTime = new Date(sortedData[sortedData.length - 1].last_updated);
-          
+          const endTime = new Date(
+            sortedData[sortedData.length - 1].last_updated
+          );
+
           const start = new Date(startTime);
           start.setUTCMinutes(0, 0, 0);
           if (start <= startTime) {
             start.setUTCHours(start.getUTCHours() + 1);
           }
-          
+
           const end = new Date(endTime);
           end.setUTCMinutes(0, 0, 0);
-          
+
           const filledData = [];
           let dataIndex = 0;
-          
+
           for (
             let currentTime = new Date(start);
             currentTime <= end;
             currentTime.setUTCHours(currentTime.getUTCHours() + 1)
           ) {
             const targetTime = currentTime.getTime();
-            
+
             while (
               dataIndex < sortedData.length - 1 &&
-              new Date(sortedData[dataIndex + 1].last_updated).getTime() <= targetTime
+              new Date(sortedData[dataIndex + 1].last_updated).getTime() <=
+                targetTime
             ) {
               dataIndex++;
             }
-            
+
             const mostRecentPoint = sortedData[dataIndex];
-            
+
             filledData.push({
               last_updated: new Date(currentTime).toISOString(),
               previous_sub_count: mostRecentPoint.previous_sub_count,
               average_per_day: mostRecentPoint.average_per_day,
             });
           }
-          
+
           processedData = filledData;
         }
       }
 
       if (selectedColumnsType === 'all') {
         processedData = calculateGrowthRate(processedData, 'hourly');
-        csvContent = 'Hour,Subscribers,Average Daily Subs,Hourly Change\n';
+
+        if (selectedDataType === 'interpolated') {
+          processedData = processedData.map((current, index) => {
+            let gain24h = '';
+
+            if (
+              index >= 24 &&
+              current.previous_sub_count &&
+              processedData[index - 24].previous_sub_count
+            ) {
+              const currentSubs = parseInt(current.previous_sub_count);
+              const subs24hAgo = parseInt(
+                processedData[index - 24].previous_sub_count
+              );
+              gain24h = (currentSubs - subs24hAgo).toString();
+            }
+
+            return {
+              ...current,
+              gain_24h: gain24h,
+            };
+          });
+
+          csvContent =
+            'Hour,Subscribers,Average Daily Subs,Hourly Change,24h Gain\n';
+        } else {
+          csvContent = 'Hour,Subscribers,Average Daily Subs,Hourly Change\n';
+        }
       } else {
         csvContent = 'Hour,Subscribers\n';
       }
@@ -1244,9 +1274,16 @@ function generateCSVContent() {
           const avgValue = row.average_per_day
             ? parseInt(row.average_per_day).toString()
             : '';
-          csvContent += `${dateStr},${
-            row.previous_sub_count || ''
-          },${avgValue},${row.growth_rate || ''}\n`;
+
+          if (selectedDataType === 'interpolated') {
+            csvContent += `${dateStr},${
+              row.previous_sub_count || ''
+            },${avgValue},${row.growth_rate || ''},${row.gain_24h || ''}\n`;
+          } else {
+            csvContent += `${dateStr},${
+              row.previous_sub_count || ''
+            },${avgValue},${row.growth_rate || ''}\n`;
+          }
         } else {
           csvContent += `${dateStr},${row.previous_sub_count || ''}\n`;
         }
@@ -1261,40 +1298,55 @@ function generateCSVContent() {
         const sortedData = [...dataToUse].sort(
           (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
         );
-        
+
         if (sortedData.length > 0) {
           const startDate = new Date(sortedData[0].last_updated);
-          const endDate = new Date(sortedData[sortedData.length - 1].last_updated);
-          
-          const start = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate()));
-          const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()));
-          
+          const endDate = new Date(
+            sortedData[sortedData.length - 1].last_updated
+          );
+
+          const start = new Date(
+            Date.UTC(
+              startDate.getUTCFullYear(),
+              startDate.getUTCMonth(),
+              startDate.getUTCDate()
+            )
+          );
+          const end = new Date(
+            Date.UTC(
+              endDate.getUTCFullYear(),
+              endDate.getUTCMonth(),
+              endDate.getUTCDate()
+            )
+          );
+
           const filledData = [];
           let dataIndex = 0;
-          
+
           for (
             let currentDate = new Date(start);
             currentDate <= end;
             currentDate.setUTCDate(currentDate.getUTCDate() + 1)
           ) {
             const targetTime = currentDate.getTime();
-            
+
             while (
               dataIndex < sortedData.length - 1 &&
-              new Date(sortedData[dataIndex + 1].last_updated).getTime() <= targetTime + 24 * 60 * 60 * 1000
+              new Date(sortedData[dataIndex + 1].last_updated).getTime() <=
+                targetTime + 24 * 60 * 60 * 1000
             ) {
               dataIndex++;
             }
-            
+
             const mostRecentPoint = sortedData[dataIndex];
-            
+
             filledData.push({
               last_updated: new Date(currentDate).toISOString(),
               previous_sub_count: mostRecentPoint.previous_sub_count,
               average_per_day: mostRecentPoint.average_per_day,
             });
           }
-          
+
           processedData = filledData;
         }
       }
@@ -1334,17 +1386,19 @@ function generateCSVContent() {
         const sortedData = [...dataToUse].sort(
           (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
         );
-        
+
         if (sortedData.length > 0) {
           const startDate = new Date(sortedData[0].last_updated);
-          const endDate = new Date(sortedData[sortedData.length - 1].last_updated);
-          
+          const endDate = new Date(
+            sortedData[sortedData.length - 1].last_updated
+          );
+
           const start = getWeekStartDate(startDate);
           const end = getWeekStartDate(endDate);
-          
+
           const filledData = [];
           let dataIndex = 0;
-          
+
           for (
             let currentWeek = new Date(start);
             currentWeek <= end;
@@ -1352,23 +1406,24 @@ function generateCSVContent() {
           ) {
             const weekEnd = new Date(currentWeek);
             weekEnd.setUTCDate(weekEnd.getUTCDate() + 7);
-            
+
             while (
               dataIndex < sortedData.length - 1 &&
-              new Date(sortedData[dataIndex + 1].last_updated).getTime() <= weekEnd.getTime()
+              new Date(sortedData[dataIndex + 1].last_updated).getTime() <=
+                weekEnd.getTime()
             ) {
               dataIndex++;
             }
-            
+
             const mostRecentPoint = sortedData[dataIndex];
-            
+
             filledData.push({
               last_updated: new Date(currentWeek).toISOString(),
               previous_sub_count: mostRecentPoint.previous_sub_count,
               average_per_day: mostRecentPoint.average_per_day,
             });
           }
-          
+
           processedData = filledData;
         }
       }
@@ -1409,17 +1464,23 @@ function generateCSVContent() {
         const sortedData = [...dataToUse].sort(
           (a, b) => new Date(a.last_updated) - new Date(b.last_updated)
         );
-        
+
         if (sortedData.length > 0) {
           const startDate = new Date(sortedData[0].last_updated);
-          const endDate = new Date(sortedData[sortedData.length - 1].last_updated);
-          
-          const start = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1));
-          const end = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1));
-          
+          const endDate = new Date(
+            sortedData[sortedData.length - 1].last_updated
+          );
+
+          const start = new Date(
+            Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), 1)
+          );
+          const end = new Date(
+            Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1)
+          );
+
           const filledData = [];
           let dataIndex = 0;
-          
+
           for (
             let currentMonth = new Date(start);
             currentMonth <= end;
@@ -1427,23 +1488,24 @@ function generateCSVContent() {
           ) {
             const monthEnd = new Date(currentMonth);
             monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
-            
+
             while (
               dataIndex < sortedData.length - 1 &&
-              new Date(sortedData[dataIndex + 1].last_updated).getTime() <= monthEnd.getTime()
+              new Date(sortedData[dataIndex + 1].last_updated).getTime() <=
+                monthEnd.getTime()
             ) {
               dataIndex++;
             }
-            
+
             const mostRecentPoint = sortedData[dataIndex];
-            
+
             filledData.push({
               last_updated: new Date(currentMonth).toISOString(),
               previous_sub_count: mostRecentPoint.previous_sub_count,
               average_per_day: mostRecentPoint.average_per_day,
             });
           }
-          
+
           processedData = filledData;
         }
       }
