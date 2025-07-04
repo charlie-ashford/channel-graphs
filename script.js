@@ -422,6 +422,22 @@ function setupChart(containerId, data, profilePictureUrl, title, yAxisText) {
         type: 'datetime',
         labels: {
           style: { color: 'var(--text-secondary)', fontSize: '12px' },
+          formatter: function () {
+            const date = new Date(this.value);
+            const easternOffset = date
+              .toLocaleString('en-US', {
+                timeZone: 'America/New_York',
+                timeZoneName: 'short',
+              })
+              .includes('EDT')
+              ? -4
+              : -5;
+
+            return Highcharts.dateFormat(
+              '%e %b',
+              this.value + easternOffset * 60 * 60 * 1000
+            );
+          },
         },
         gridLineWidth: 1,
         gridLineColor: 'rgba(255,255,255,0.1)',
@@ -448,8 +464,8 @@ function setupChart(containerId, data, profilePictureUrl, title, yAxisText) {
         style: { color: 'var(--text-primary)', fontSize: '13px' },
         formatter: function () {
           const date = new Date(this.x);
-          const utcDate = date.toLocaleString(undefined, {
-            timeZone: 'UTC',
+          const estDate = date.toLocaleString(undefined, {
+            timeZone: 'America/New_York',
             year: 'numeric',
             month: 'short',
             day: 'numeric',
@@ -458,7 +474,7 @@ function setupChart(containerId, data, profilePictureUrl, title, yAxisText) {
           });
           return `<b>${
             this.series.name
-          }</b><br/>${utcDate}: ${this.y.toLocaleString()}`;
+          }</b><br/>${estDate}: ${this.y.toLocaleString()}`;
         },
       },
       plotOptions: {
