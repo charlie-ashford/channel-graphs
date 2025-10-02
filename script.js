@@ -422,22 +422,15 @@ function setupChart(containerId, data, profilePictureUrl, title, yAxisText) {
         type: 'datetime',
         labels: {
           style: { color: 'var(--text-secondary)', fontSize: '12px' },
-          formatter: function () {
-            const date = new Date(this.value);
-            const easternOffset = date
-              .toLocaleString('en-US', {
-                timeZone: 'America/New_York',
-                timeZoneName: 'short',
-              })
-              .includes('EDT')
-              ? -4
-              : -5;
-
-            return Highcharts.dateFormat(
-              '%e %b',
-              this.value + easternOffset * 60 * 60 * 1000
-            );
-          },
+        },
+        dateTimeLabelFormats: {
+          second: '%H:%M:%S',
+          minute: '%H:%M',
+          hour: '%H:%M',
+          day: '%e %b',
+          week: '%e %b',
+          month: "%b '%y",
+          year: '%Y',
         },
         gridLineWidth: 1,
         gridLineColor: 'rgba(255,255,255,0.1)',
